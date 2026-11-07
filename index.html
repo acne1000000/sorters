@@ -414,7 +414,26 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Supabase connection. The publishable key is designed for browser use;
+// database access is protected by the Row Level Security policies.
+const SUPABASE_URL = "https://pdbtmsjimjsmuipkoszo.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cBTHQ8KJ3Sw5wJcRffYYdA_kE-qI-NS";
+// Fail clearly if the Supabase library did not load (for example, because
+// the CDN was blocked or the device is offline).
+let supabaseClient = null;
+let supabaseInitError = null;
+try {
+  if (!window.supabase || typeof window.supabase.createClient !== "function") {
+    throw new Error("Supabase JS library did not load. Check your internet connection and refresh.");
+  }
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+} catch (err) {
+  supabaseInitError = err;
+  console.error("Supabase initialization failed:", err);
+}
+
 // ---------- Route data ----------
 // [code, label]  label "" means no label given yet
 const EVEN_ROUTES = [
@@ -474,7 +493,7 @@ const ODD_ROUTES = [
 ["917202","72A2"],["917104","71A3"],["917102","71A1"],["917005","70A1"],["916801","68A"]
 ];
 
-let db = null, userCap = null, myId = null, myName = "";
+let db = supabaseClient, myId = null, myName = "";
 let selectedDate = todayStr();
 let dayType = "even";
 let pickedRoutes = [];  // routes chosen right now, about to be added
@@ -589,20 +608,19 @@ async function onDateChange() {
 let currentDocDayType = null;
 
 async function loadTodayRoutes() {
-  const before = todayRoutes.slice();
   currentDocDayType = null;
   if (!db || !myId) { renderTodayTags(); return; }
   try {
-    const snap = await withTimeout(db.doc("submissions/" + myId + "_" + selectedDate).get(), 10000);
-    if (snap.exists) {
-      const data = snap.data();
-      const saved = data.routes || [];
-      const merged = saved.slice();
-      todayRoutes.forEach(r => { if (!merged.some(x => x.code === r.code)) merged.push(r); });
-      todayRoutes = merged;
-      currentDocDayType = data.dayType || null;
+    const { data, error } = await db.from("submissions")
+      .select("*").eq("user_id", myId).eq("date", selectedDate).maybeSingle();
+    if (error) throw error;
+    if (data) {
+      todayRoutes = Array.isArray(data.routes) ? data.routes : [];
+      currentDocDayType = data.day_type || null;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Could not load this day's routes:", e);
+  }
   renderTodayTags();
 }
 
@@ -684,15 +702,27 @@ async function saveTodayRoutes() {
   try {
     do {
       savePending = false;
-      const date = selectedDate, routes = todayRoutes.slice(), dt = dayType;
-      const ref = db.doc("submissions/" + myId + "_" + date);
+      const date = selectedDate;
+      const routes = todayRoutes.slice();
+      const dt = dayType;
       if (routes.length === 0) {
-        await withTimeout(ref.delete(), 20000);
+        const { error } = await db.from("submissions").delete()
+          .eq("user_id", myId).eq("date", date);
+        if (error) throw error;
       } else {
-        await withTimeout(ref.set({ userId: myId, date: date, dayType: dt, routes: routes, submittedAt: Date.now() }), 20000);
+        const { error } = await db.from("submissions").upsert({
+          user_id: myId,
+          person_name: myName || (currentAccount && currentAccount.email ? currentAccount.email.split("@")[0] : "Employee"),
+          date: date,
+          day_type: dt,
+          routes: routes,
+          submitted_at: new Date().toISOString()
+        }, { onConflict: "user_id,date" });
+        if (error) throw error;
       }
     } while (savePending);
   } catch (e) {
+    console.error("Could not save routes:", e);
     statusEl.textContent = T("genericError");
     statusEl.className = "status-msg err";
   }
@@ -745,14 +775,14 @@ function renderHistory(docs) {
     const item = document.createElement("div");
     item.className = "history-item";
     const routesHtml = (d.routes || []).map(r => {
-      const color = areaColor(findAreaForCode(r.code, d.dayType), d.dayType);
+      const color = areaColor(findAreaForCode(r.code, d.day_type), d.day_type);
       return '<div class="history-chip" style="--sel:' + color + '">' +
         '<span class="rc-name">' + (r.label || "—") + '</span>' +
         '<span class="rc-code">' + r.code + '</span></div>';
     }).join("");
     item.innerHTML =
       '<div class="history-date">' + fmtDate(d.date) +
-      '<span class="history-daytype ' + d.dayType + '">' + d.dayType + '</span></div>' +
+      '<span class="history-daytype ' + d.day_type + '">' + d.day_type + '</span></div>' +
       '<div class="history-routes">' + routesHtml + '</div>';
     el.appendChild(item);
   });
@@ -766,18 +796,22 @@ async function renderTeamList(docs) {
     el.innerHTML = '<div class="empty-note">No one has submitted for this day yet.</div>';
     return;
   }
-  const ids = docs.map(d => d.userId);
+  const ids = Array.from(new Set(docs.map(d => d.user_id).filter(Boolean)));
   let profiles = {};
-  try {
-    if (userCap) profiles = await userCap.profiles(ids);
-  } catch (e) {}
-  docs.sort((a,b) => (profiles[a.userId] && profiles[a.userId].name || "").localeCompare(profiles[b.userId] && profiles[b.userId].name || ""));
+  if (ids.length) {
+    try {
+      const { data, error } = await db.from("profiles").select("id,display_name").in("id", ids);
+      if (error) throw error;
+      (data || []).forEach(p => { profiles[p.id] = p.display_name; });
+    } catch (e) { console.error("Could not load employee names:", e); }
+  }
+  docs.sort((a,b) => (a.person_name || profiles[a.user_id] || "").localeCompare(b.person_name || profiles[b.user_id] || ""));
   el.innerHTML = "";
   docs.forEach(d => {
-    const name = (profiles[d.userId] && profiles[d.userId].name) || "Someone";
-    const time = d.submittedAt ? new Date(d.submittedAt).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"}) : "";
+    const name = d.person_name || profiles[d.user_id] || "Someone";
+    const time = d.submitted_at ? new Date(d.submitted_at).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"}) : "";
     const routesHtml = (d.routes || []).map(r => {
-      const color = areaColor(findAreaForCode(r.code, d.dayType), d.dayType);
+      const color = areaColor(findAreaForCode(r.code, d.day_type), d.day_type);
       return '<div class="history-chip" style="--sel:' + color + '">' +
         '<span class="rc-name">' + (r.label || "—") + '</span>' +
         '<span class="rc-code">' + r.code + '</span></div>';
@@ -787,7 +821,7 @@ async function renderTeamList(docs) {
     card.innerHTML =
       '<div class="row" style="justify-content:space-between;">' +
         '<span class="emp-name"></span>' +
-        '<span class="emp-time">' + time + '<span class="history-daytype ' + d.dayType + '" style="margin-left:6px;">' + d.dayType + '</span></span>' +
+        '<span class="emp-time">' + time + '<span class="history-daytype ' + d.day_type + '" style="margin-left:6px;">' + d.day_type + '</span></span>' +
       '</div>' +
       '<div class="history-routes" style="margin-top:6px;">' + routesHtml + '</div>';
     card.querySelector(".emp-name").textContent = name;
@@ -810,31 +844,75 @@ function switchTab(tab) {
   document.getElementById("viewTeam").style.display = tab === "team" ? "block" : "none";
 }
 
+async function refreshMine() {
+  if (!db || !myId) return;
+  const { data, error } = await db.from("submissions").select("*")
+    .eq("user_id", myId).order("date", { ascending: false }).limit(60);
+  if (error) { console.error(error); return; }
+  renderHistory(data || []);
+}
+
+async function refreshTeam() {
+  if (!db || !myId) return;
+  const dateEl = document.getElementById("teamDateInput");
+  const date = dateEl.value || todayStr();
+  document.getElementById("teamList").innerHTML = '<div class="spinner-note">Loading...</div>';
+  const { data, error } = await db.from("submissions").select("*").eq("date", date).limit(200);
+  if (error) {
+    console.error("Could not load team submissions:", error);
+    document.getElementById("teamList").innerHTML = '<div class="empty-note">Could not load team data.</div>';
+    return;
+  }
+  await renderTeamList(data || []);
+}
+
 function subscribeMine() {
   if (!db || !myId) return;
-  if (unsubMine) unsubMine();
-  unsubMine = db.collection("submissions").where("userId", "==", myId).limit(60).onSnapshot(
-    snap => {
-      const docs = snap.docs ? snap.docs.map(d => d.data()) : [];
-      renderHistory(docs);
-    },
-    err => { document.getElementById("historyList").innerHTML = '<div class="empty-note">Couldn\'t load history.</div>'; }
-  );
+  if (unsubMine) db.removeChannel(unsubMine);
+  refreshMine();
+  unsubMine = db.channel("mine-" + myId)
+    .on("postgres_changes", { event: "*", schema: "public", table: "submissions", filter: "user_id=eq." + myId }, () => refreshMine())
+    .subscribe();
 }
 
 function subscribeTeam() {
-  if (!db) return;
-  const dateEl = document.getElementById("teamDateInput");
-  const date = dateEl.value || todayStr();
-  if (unsubTeam) unsubTeam();
-  document.getElementById("teamList").innerHTML = '<div class="spinner-note">Loading...</div>';
-  unsubTeam = db.collection("submissions").where("date", "==", date).limit(200).onSnapshot(
-    snap => {
-      const docs = snap.docs ? snap.docs.map(d => d.data()) : [];
-      renderTeamList(docs);
-    },
-    err => { document.getElementById("teamList").innerHTML = '<div class="empty-note">Couldn\'t load team data.</div>'; }
-  );
+  if (!db || !myId) return;
+  if (unsubTeam) db.removeChannel(unsubTeam);
+  refreshTeam();
+  unsubTeam = db.channel("team-submissions")
+    .on("postgres_changes", { event: "*", schema: "public", table: "submissions" }, () => refreshTeam())
+    .subscribe();
+}
+
+async function startAppForUser(user) {
+  myId = user ? user.id : null;
+  myName = "";
+  currentAccount = user ? { email: user.email || "" } : null;
+  if (user) {
+    try {
+      const { data, error } = await db.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
+      if (!error && data) myName = data.display_name || "";
+    } catch (e) { console.error(e); }
+    if (!myName) myName = (user.email || "Employee").split("@")[0];
+  }
+  renderAccountUI();
+  if (!user) {
+    if (unsubMine) db.removeChannel(unsubMine);
+    if (unsubTeam) db.removeChannel(unsubTeam);
+    if (unsubCustom) db.removeChannel(unsubCustom);
+    unsubMine = unsubTeam = unsubCustom = null;
+    document.getElementById("historyList").innerHTML = '<div class="empty-note">Sign in to view your history.</div>';
+    document.getElementById("teamList").innerHTML = '<div class="empty-note">Sign in to view team submissions.</div>';
+    document.getElementById("statusMsg").textContent = "Sign in to add routes.";
+    return;
+  }
+  document.getElementById("statusMsg").textContent = "";
+  subscribeCustom();
+  subscribeMine();
+  subscribeTeam();
+  await loadTodayRoutes();
+  if (currentDocDayType && currentDocDayType !== dayType) setDayType(currentDocDayType, false, true);
+  updateAddButtonState();
 }
 
 async function init() {
@@ -843,39 +921,27 @@ async function init() {
   document.getElementById("dateInput").onchange = onDateChange;
   document.getElementById("teamDateInput").onchange = subscribeTeam;
 
-  try {
-    db = await claude.use("db");
-  } catch(e) { db = null; }
-  try {
-    userCap = await claude.use("user");
-  } catch(e) { userCap = null; }
-
-  if (userCap) {
-    try {
-      const me = await userCap.me();
-      myId = me.id;
-      myName = me.name || "";
-    } catch(e) {}
-  }
-
-  if (!db) {
-    document.getElementById("historyList").innerHTML = '<div class="empty-note">Storage isn\'t available in this view.</div>';
-    document.getElementById("teamList").innerHTML = '<div class="empty-note">Storage isn\'t available in this view.</div>';
-  }
-  if (!myId) {
-    document.getElementById("statusMsg").textContent = "Sign in to add routes.";
-  }
-
   initAccountAndLanguage();
   setMenuBtnIcon(false);
   updateViewToggle();
   setDayType(weekdayIsEven(selectedDate) ? "even" : "odd", true);
-  subscribeCustom();
-  subscribeMine();
-  subscribeTeam();
-  await loadTodayRoutes();
-  if (currentDocDayType && currentDocDayType !== dayType) setDayType(currentDocDayType, false, true);
-  updateAddButtonState();
+
+  if (!db || !db.auth) {
+    console.error("Route Tracker could not initialize Supabase:", supabaseInitError);
+    document.getElementById("statusMsg").textContent = "Supabase connection could not initialize. Check your internet connection and refresh.";
+    await startAppForUser(null);
+    return;
+  }
+
+  const { data: { session }, error } = await db.auth.getSession();
+  if (error) console.error("Could not restore Supabase session:", error);
+  await startAppForUser(session ? session.user : null);
+
+  db.auth.onAuthStateChange((event, sessionNow) => {
+    if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+      setTimeout(() => startAppForUser(sessionNow ? sessionNow.user : null), 0);
+    }
+  });
 }
 
 // ---------- Shared custom routes ----------
@@ -930,32 +996,37 @@ function getRouteList(dt) {
 
 let kirvesMigrationDone = false;
 async function migrateKirvesArea() {
-  if (kirvesMigrationDone || !db) return;
+  if (kirvesMigrationDone || !db || !myId) return;
   kirvesMigrationDone = true;
   const stale = customRoutes.filter(r => r.area && r.area.indexOf("Kirvermirhenkatu") === 0);
   for (const r of stale) {
     const newArea = r.area.replace("Kirvermirhenkatu", "Kirvesmiehinkatu");
     try {
-      await db.doc("customRoutes/" + r.dayType + "_" + routeIdSafe(r.code)).set({
-        code: r.code, label: r.label, dayType: r.dayType, area: newArea,
-        addedBy: r.addedBy, addedAt: r.addedAt
-      });
-    } catch (e) {}
+      await db.from("custom_routes").update({ area: newArea }).eq("code", r.code).eq("day_type", r.dayType);
+    } catch (e) { console.error(e); }
   }
 }
 
+async function refreshCustomRoutes() {
+  if (!db || !myId) return;
+  const { data, error } = await db.from("custom_routes").select("*").limit(500);
+  if (error) { console.error("Could not load custom routes:", error); return; }
+  customRoutes = (data || []).map(r => ({
+    code: r.code, label: r.label || "", dayType: r.day_type, area: r.area || "",
+    addedBy: r.added_by, addedAt: r.added_at
+  }));
+  renderRouteGrid();
+  renderTodayTags();
+  migrateKirvesArea();
+}
+
 function subscribeCustom() {
-  if (!db) return;
-  if (unsubCustom) unsubCustom();
-  unsubCustom = db.collection("customRoutes").limit(500).onSnapshot(
-    snap => {
-      customRoutes = snap.docs ? snap.docs.map(d => d.data()) : [];
-      renderRouteGrid();
-      renderTodayTags();
-      migrateKirvesArea();
-    },
-    err => {}
-  );
+  if (!db || !myId) return;
+  if (unsubCustom) db.removeChannel(unsubCustom);
+  refreshCustomRoutes();
+  unsubCustom = db.channel("shared-custom-routes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "custom_routes" }, () => refreshCustomRoutes())
+    .subscribe();
 }
 
 function routeIdSafe(code) { return code.toLowerCase().replace(/[^a-z0-9]/g, "_"); }
@@ -1007,9 +1078,10 @@ async function addManualRoute() {
   if (existing && !label) label = existing.label;
   const docDay = existing ? existing.dayType : dayType;
   try {
-    await db.doc("customRoutes/" + docDay + "_" + routeIdSafe(code)).set({
-      code: code, label: label, dayType: docDay, area: area, addedBy: myId, addedAt: Date.now()
-    });
+    const { error } = await db.from("custom_routes").upsert({
+      code: code, label: label, day_type: docDay, area: area, added_by: myId
+    }, { onConflict: "code,day_type" });
+    if (error) throw error;
   } catch (e) {}
   if (!todayRoutes.some(r => r.code === code)) {
     todayRoutes.push({ code: code, label: label, manual: true });
@@ -1105,12 +1177,17 @@ function addDaysIso(iso, n) {
 
 async function fetchSubmissionsRange(from, to) {
   const out = [];
-  let cur = from;
-  while (cur <= to) {
-    const end = addDaysIso(cur, 13) < to ? addDaysIso(cur, 13) : to;
-    const snap = await withTimeout(db.collection("submissions").where("date", ">=", cur).where("date", "<=", end).limit(1000).get(), 30000);
-    (snap.docs || []).forEach(d => out.push(d.data()));
-    cur = addDaysIso(end, 1);
+  let fromIndex = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await db.from("submissions").select("*")
+      .gte("date", from).lte("date", to).order("date", { ascending: true })
+      .range(fromIndex, fromIndex + pageSize - 1);
+    if (error) throw error;
+    const page = data || [];
+    out.push(...page);
+    if (page.length < pageSize) break;
+    fromIndex += pageSize;
   }
   return out;
 }
@@ -1138,31 +1215,39 @@ async function downloadStats() {
   btn.disabled = true;
   setMsg(T("statsBuilding"));
   try {
-    const downloads = await claude.use("downloads");
-    if (!downloads) { setMsg(T("statsUnavailable"), "err"); btn.disabled = false; return; }
     const docs = await fetchSubmissionsRange(from, to);
-    const valid = docs.filter(d => d && d.userId && d.date && (d.routes || []).length);
+    const valid = docs.filter(d => d && d.date && (d.routes || []).length);
     if (!valid.length) { setMsg(T("statsNoData"), "err"); btn.disabled = false; return; }
 
-    let profiles = {};
-    try { if (userCap) profiles = await userCap.profiles(Array.from(new Set(valid.map(d => d.userId)))); } catch (e) {}
-    const nameOf = id => (profiles[id] && profiles[id].name) || T("statsUnknown");
+    const ids = Array.from(new Set(valid.map(d => d.user_id).filter(Boolean)));
+    const profiles = {};
+    if (ids.length) {
+      const { data: profileRows, error: profileError } = await db.from("profiles").select("id,display_name").in("id", ids);
+      if (profileError) throw profileError;
+      (profileRows || []).forEach(p => { profiles[p.id] = p.display_name; });
+    }
+    const personKey = d => d.user_id || ("legacy:" + (d.person_name || "Unknown"));
+    const nameOf = d => d.person_name || profiles[d.user_id] || T("statsUnknown");
     const locale = currentLang === "fi" ? "fi-FI" : "en-US";
     const weekday = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString(locale, { weekday: "long" }); };
 
-    valid.sort((a, b) => a.date.localeCompare(b.date) || nameOf(a.userId).localeCompare(nameOf(b.userId)));
+    valid.sort((a, b) => a.date.localeCompare(b.date) || nameOf(a).localeCompare(nameOf(b)));
 
     const byDay = [[T("statsColDate"), T("statsColDay"), T("statsColPerson"), T("statsColNumbers"), T("statsColCount"), T("statsColRoutes")]];
-    valid.forEach(d => byDay.push([d.date, weekday(d.date), nameOf(d.userId), d.dayType === "odd" ? T("oddNumbers") : T("evenNumbers"), d.routes.length, d.routes.map(routeText).join(", ")]));
+    valid.forEach(d => byDay.push([d.date, weekday(d.date), nameOf(d), d.day_type === "odd" ? T("oddNumbers") : T("evenNumbers"), d.routes.length, d.routes.map(routeText).join(", ")]));
 
     const dates = Array.from(new Set(valid.map(d => d.date))).sort();
-    const people = Array.from(new Set(valid.map(d => d.userId))).sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+    const people = Array.from(new Set(valid.map(personKey))).sort((a, b) => {
+      const da = valid.find(x => personKey(x) === a), dbb = valid.find(x => personKey(x) === b);
+      return nameOf(da).localeCompare(nameOf(dbb));
+    });
     const matrix = [[T("statsColPerson")].concat(dates, [T("statsColDays"), T("statsColTotal")])];
     people.forEach(pid => {
-      const row = [nameOf(pid)];
+      const personRecord = valid.find(x => personKey(x) === pid);
+      const row = [nameOf(personRecord)];
       let days = 0, total = 0;
       dates.forEach(dt => {
-        const d = valid.find(x => x.userId === pid && x.date === dt);
+        const d = valid.find(x => personKey(x) === pid && x.date === dt);
         if (d) { row.push(d.routes.map(routeText).join(", ")); days++; total += d.routes.length; } else row.push("");
       });
       row.push(days, total);
@@ -1174,7 +1259,11 @@ async function downloadStats() {
       { name: T("statsSheetPerPerson"), rows: matrix, widths: [24].concat(dates.map(() => 30), [12, 16]), freezeCols: 1, wrap: true }
     ]);
     const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    await downloads.save({ filename: "route-statistics_" + from + "_to_" + to + ".xlsx", data: blob });
+    const filename = "route-statistics_" + from + "_to_" + to + ".xlsx";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     setMsg(T("statsSaved"), "ok");
   } catch (e) {
     const code = e && e.code;
@@ -1183,30 +1272,16 @@ async function downloadStats() {
   btn.disabled = false;
 }
 
-// ---------- Account (email login/signup) ----------
+// ---------- Account (Supabase email authentication) ----------
 let currentAccount = null; // {email}
 let accMode = "login";
 
-async function sha256Hex(str) {
-  const enc = new TextEncoder().encode(str);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-function emailToDocId(email) {
-  return email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
-}
-
-function openAccountPanel() {
-  document.getElementById("accountOverlay").classList.add("open");
-}
+function openAccountPanel() { document.getElementById("accountOverlay").classList.add("open"); }
 function closeAccountPanel() {
   document.getElementById("accountOverlay").classList.remove("open");
   document.getElementById("accStatusMsg").textContent = "";
 }
-function closeAccountPanelOnOverlay(e) {
-  if (e.target.id === "accountOverlay") closeAccountPanel();
-}
+function closeAccountPanelOnOverlay(e) { if (e.target.id === "accountOverlay") closeAccountPanel(); }
 
 function setAccMode(mode) {
   accMode = mode;
@@ -1223,54 +1298,47 @@ async function submitAccountForm() {
   const email = (document.getElementById("accEmail").value || "").trim();
   const password = document.getElementById("accPassword").value || "";
   if (!email || !password) {
-    statusEl.textContent = T("fillBoth");
-    statusEl.classList.add("err");
-    return;
-  }
-  if (!db) {
-    statusEl.textContent = T("noStorage");
-    statusEl.classList.add("err");
-    return;
+    statusEl.textContent = T("fillBoth"); statusEl.classList.add("err"); return;
   }
   const btn = document.getElementById("accSubmitBtn");
   btn.disabled = true;
-  const docId = emailToDocId(email);
   try {
-    const passwordHash = await sha256Hex(password);
-    const ref = db.doc("accounts/" + docId);
-    if (accMode === "signup") {
-      const existing = await ref.get();
-      if (existing.exists) {
-        statusEl.textContent = T("accountExists");
-        statusEl.classList.add("err");
-        btn.disabled = false;
-        return;
-      }
-      await ref.set({ email: email, passwordHash: passwordHash, createdAt: Date.now() });
-    } else {
-      const snap = await ref.get();
-      if (!snap.exists || snap.data().passwordHash !== passwordHash) {
-        statusEl.textContent = T("wrongCreds");
-        statusEl.classList.add("err");
-        btn.disabled = false;
-        return;
-      }
+    if (!db || !db.auth) {
+      throw supabaseInitError || new Error("Supabase is not initialized. Check the connection settings and refresh the page.");
     }
-    currentAccount = { email: email };
-    try { localStorage.setItem("routeTracker_account", JSON.stringify(currentAccount)); } catch(e) {}
-    renderAccountUI();
-    document.getElementById("accPassword").value = "";
+    if (accMode === "signup") {
+      const { data, error } = await db.auth.signUp({
+        email, password,
+        options: { data: { display_name: email.split("@")[0] } }
+      });
+      if (error) throw error;
+      if (data.session) {
+        statusEl.textContent = "Account created and signed in.";
+        statusEl.classList.add("ok");
+      } else {
+        statusEl.textContent = "Account created. Check your email to confirm it, then log in.";
+        statusEl.classList.add("ok");
+      }
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      statusEl.textContent = "Signed in.";
+      statusEl.classList.add("ok");
+      document.getElementById("accPassword").value = "";
+      setTimeout(closeAccountPanel, 500);
+    }
   } catch (e) {
-    statusEl.textContent = T("genericError");
+    console.error("Authentication error:", e);
+    const detail = e && e.message ? e.message : T("genericError");
+    statusEl.textContent = detail;
     statusEl.classList.add("err");
   }
   btn.disabled = false;
 }
 
-function logoutAccount() {
-  currentAccount = null;
-  try { localStorage.removeItem("routeTracker_account"); } catch(e) {}
-  renderAccountUI();
+async function logoutAccount() {
+  const { error } = await db.auth.signOut();
+  if (error) console.error("Sign out failed:", error);
 }
 
 function renderAccountUI() {
@@ -1385,10 +1453,7 @@ function initAccountAndLanguage() {
   document.getElementById("langFi").classList.toggle("active", currentLang === "fi");
   applyLanguage();
 
-  try {
-    const saved = localStorage.getItem("routeTracker_account");
-    if (saved) currentAccount = JSON.parse(saved);
-  } catch(e) {}
+  currentAccount = null; // Supabase session, not localStorage, is the source of truth.
   renderAccountUI();
 }
 

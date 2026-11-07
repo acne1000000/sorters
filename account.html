@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Account — Route Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:dark;--bg:#101010;--surface:#1b1b1b;--surface2:#252525;--text:#f4f4f4;--muted:#a3a3a3;--border:#383838;--accent:#b9ed62;--danger:#ff7777}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+.wrap{max-width:560px;margin:0 auto;padding:22px 18px 48px}.top{display:flex;align-items:center;gap:14px;margin:8px 0 28px}.back{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:12px;width:42px;height:42px;font-size:22px;cursor:pointer}.title{font-size:24px;font-weight:750;letter-spacing:-.5px}.sub{color:var(--muted);font-size:13px;margin-top:4px}.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px}.photo-area{display:flex;align-items:center;gap:18px;margin-bottom:26px}.avatar{width:92px;height:92px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:30px;font-weight:700;color:var(--accent);flex-shrink:0}.avatar img{width:100%;height:100%;object-fit:cover}.photo-actions{min-width:0}.photo-actions strong{display:block;margin-bottom:6px}.hint{font-size:12px;color:var(--muted);line-height:1.45}.upload{display:inline-block;margin-top:9px;padding:9px 13px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:13px;font-weight:650;cursor:pointer}.upload input{display:none}.field{margin-top:17px}.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px}input[type=text],input[type=email]{width:100%;height:48px;border-radius:11px;border:1px solid var(--border);background:#121212;color:var(--text);padding:0 13px;font-size:16px;outline:none}input:focus{border-color:var(--accent)}.email{opacity:.7}.btn{width:100%;height:49px;border:0;border-radius:12px;background:var(--accent);color:#171717;font-weight:750;font-size:15px;margin-top:24px;cursor:pointer}.btn:disabled{opacity:.55;cursor:wait}.logout{width:100%;height:45px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);color:var(--text);font-weight:650;margin-top:12px;cursor:pointer}.status{font-size:13px;line-height:1.5;margin-top:14px;min-height:18px;color:var(--muted)}.status.ok{color:var(--accent)}.status.err{color:var(--danger)}.signed-out{display:none;text-align:center;padding:26px 10px}.signed-out p{color:var(--muted);line-height:1.5}.signed-out a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top"><button class="back" onclick="goBack()" aria-label="Back">‹</button><div><div class="title">Account</div><div class="sub">Your profile details</div></div></header>
+  <section class="card" id="profileCard" style="display:none">
+    <div class="photo-area">
+      <div class="avatar" id="avatar"><span>?</span></div>
+      <div class="photo-actions"><strong>Profile picture</strong><div class="hint">Choose a photo so your coworkers can recognise your profile. JPG, PNG or WebP, up to 3 MB.</div><label class="upload">Choose photo<input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp"></label></div>
+    </div>
+    <div class="field"><label for="firstName">First name</label><input id="firstName" type="text" autocomplete="given-name" maxlength="60" placeholder="First name"></div>
+    <div class="field"><label for="lastName">Surname</label><input id="lastName" type="text" autocomplete="family-name" maxlength="60" placeholder="Surname"></div>
+    <div class="field"><label for="email">Email address</label><input id="email" class="email" type="email" disabled></div>
+    <button class="btn" id="saveBtn" onclick="saveProfile()">Save changes</button>
+    <div class="status" id="status"></div>
+    <button class="logout" onclick="signOut()">Log out</button>
+  </section>
+  <section class="card signed-out" id="signedOut"><strong>You are not signed in</strong><p>Sign in on the main Route Tracker page first, then return here to edit your profile.</p><a href="index.html">Back to Route Tracker</a></section>
+</main>
+<script>
+const SUPABASE_URL = 'https://pdbtmsjimjsmuipkoszo.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_cBTH8KJ3Sw5wJcRffYYdA_kE-qI-NS';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let user = null, avatarUrl = null, pendingPhoto = null;
+function goBack(){ if (history.length > 1) history.back(); else location.href='index.html'; }
+function initials(name){return (name||'').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase() || '?';}
+function showAvatar(url,name){const el=document.getElementById('avatar');el.innerHTML='';if(url){const img=document.createElement('img');img.src=url;img.alt='Profile picture';img.onerror=()=>{el.textContent=initials(name)};el.appendChild(img);}else el.textContent=initials(name);}
+function message(text,kind=''){const el=document.getElementById('status');el.textContent=text;el.className='status '+kind;}
+async function init(){
+  const {data:{session},error}=await sb.auth.getSession();
+  if(error) console.error(error);
+  if(!session){document.getElementById('signedOut').style.display='block';return;}
+  user=session.user;document.getElementById('profileCard').style.display='block';document.getElementById('email').value=user.email||'';
+  const {data,error:profileError}=await sb.from('profiles').select('display_name,avatar_url').eq('id',user.id).maybeSingle();
+  if(profileError){message(profileError.message,'err');return;}
+  const full=(data?.display_name||user.user_metadata?.display_name||'').trim();const parts=full.split(/\s+/).filter(Boolean);
+  document.getElementById('firstName').value=parts.shift()||'';document.getElementById('lastName').value=parts.join(' ');avatarUrl=data?.avatar_url||null;showAvatar(avatarUrl,full);
+}
+document.getElementById('photoInput').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){message('Please choose a JPG, PNG or WebP image.','err');e.target.value='';return;}if(f.size>3*1024*1024){message('The image must be 3 MB or smaller.','err');e.target.value='';return;}pendingPhoto=f;showAvatar(URL.createObjectURL(f),document.getElementById('firstName').value+' '+document.getElementById('lastName').value);message('Photo selected. Save changes to upload it.');});
+async function saveProfile(){
+ const first=document.getElementById('firstName').value.trim(),last=document.getElementById('lastName').value.trim();
+ if(!first||!last){message('Enter both your first name and surname.','err');return;}
+ const btn=document.getElementById('saveBtn');btn.disabled=true;message('Saving…');
+ try{
+  let nextAvatar=avatarUrl;
+  if(pendingPhoto){
+   const ext=pendingPhoto.type==='image/png'?'png':pendingPhoto.type==='image/webp'?'webp':'jpg';
+   const path=user.id+'/avatar.'+ext;
+   const {error:uploadError}=await sb.storage.from('avatars').upload(path,pendingPhoto,{upsert:true,contentType:pendingPhoto.type,cacheControl:'3600'});
+   if(uploadError)throw uploadError;
+   const {data}=sb.storage.from('avatars').getPublicUrl(path);nextAvatar=data.publicUrl+'?v='+Date.now();
+  }
+  const fullName=first+' '+last;
+  const {error}=await sb.from('profiles').upsert({id:user.id,display_name:fullName,avatar_url:nextAvatar},{onConflict:'id'});
+  if(error)throw error;
+  const {error:metaError}=await sb.auth.updateUser({data:{display_name:fullName}});if(metaError)console.warn('Could not update auth metadata:',metaError.message);
+  avatarUrl=nextAvatar;pendingPhoto=null;showAvatar(avatarUrl,fullName);message('Profile saved.','ok');
+ }catch(e){console.error(e);message(e.message||'Could not save your profile.','err');}
+ finally{btn.disabled=false;}
+}
+async function signOut(){const {error}=await sb.auth.signOut();if(error){message(error.message,'err');return;}location.href='index.html';}
+sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')location.href='index.html';});
+init();
+</script>
+</body>
+</html>

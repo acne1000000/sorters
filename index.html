@@ -136,7 +136,6 @@
 
   .auto-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 14px; }
 
-  
   .date-box {
     display: flex; align-items: center; gap: 10px;
   }
@@ -237,6 +236,23 @@
   .confirm-btns .btn { margin-top: 12px; }
   .spinner-note { color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px 0; }
 
+  .signin-prompt {
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .signin-prompt h3 { margin: 0 0 6px; font-size: 17px; font-weight: 700; }
+  .signin-prompt p { margin: 0 0 16px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .signin-prompt a {
+    display: inline-block; padding: 11px 28px;
+    background: var(--accent); color: var(--accent-text);
+    border-radius: 10px; font-size: 14px; font-weight: 700;
+    text-decoration: none; cursor: pointer;
+  }
+
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.45);
     display: none; align-items: flex-end; justify-content: center; z-index: 1000;
@@ -294,6 +310,13 @@
 
   <!-- MY DAY VIEW -->
   <div id="viewMine">
+
+    <div class="signin-prompt" id="signInPrompt" style="display:none;">
+      <h3>Sign in to track your routes</h3>
+      <p>Your routes are saved to your account and visible to your team.</p>
+      <a href="account.html">Sign in / Create account</a>
+    </div>
+
     <div class="work-area">
 
       <div style="margin-top:14px;">
@@ -896,6 +919,10 @@ async function startAppForUser(user) {
     if (!myName) myName = (user.email || "Employee").split("@")[0];
   }
   renderAccountUI();
+
+  const prompt = document.getElementById("signInPrompt");
+  if (prompt) prompt.style.display = user ? "none" : "block";
+
   if (!user) {
     if (unsubMine) db.removeChannel(unsubMine);
     if (unsubTeam) db.removeChannel(unsubTeam);
@@ -903,7 +930,8 @@ async function startAppForUser(user) {
     unsubMine = unsubTeam = unsubCustom = null;
     document.getElementById("historyList").innerHTML = '<div class="empty-note">Sign in to view your history.</div>';
     document.getElementById("teamList").innerHTML = '<div class="empty-note">Sign in to view team submissions.</div>';
-    document.getElementById("statusMsg").textContent = "Sign in to add routes.";
+    document.getElementById("statusMsg").textContent = "";
+    document.getElementById("statusMsg").className = "status-msg";
     return;
   }
   document.getElementById("statusMsg").textContent = "";
@@ -1309,7 +1337,10 @@ async function submitAccountForm() {
     if (accMode === "signup") {
       const { data, error } = await db.auth.signUp({
         email, password,
-        options: { data: { display_name: email.split("@")[0] } }
+        options: {
+          data: { display_name: email.split("@")[0] },
+          emailRedirectTo: new URL("account.html", window.location.href).href
+        }
       });
       if (error) throw error;
       if (data.session) {

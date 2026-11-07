@@ -219,7 +219,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 const SUPABASE_URL = "https://pdbtmsjimjsmuipkoszo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cBTHQ8KJ3Sw5wJcRffYYdA_kE-qI-NS";
@@ -357,7 +357,6 @@ async function saveNewPassword() {
     setStatus("recoveryStatus", "Password updated. You're now signed in.", "ok");
     document.getElementById("newPassword").value = "";
     document.getElementById("newPassword2").value = "";
-    // Make sure we have the user loaded from the current session.
     if (!user) {
       try {
         const { data: { session } } = await sb.auth.getSession();
@@ -474,7 +473,6 @@ function showSignedOut() {
 
 async function showSignedIn() {
   if (!user) {
-    // Try to recover a session if we somehow lost our reference.
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user) user = session.user;

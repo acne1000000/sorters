@@ -92,18 +92,40 @@
   }
   .plain-btn:active { opacity: 0.6; }
   .logo-img-small { width: 30px; height: 30px; border-radius: 8px; display: block; }
-  .account-btn {
-    width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border);
-    background: var(--surface-2); color: var(--text); font-size: 18px;
-    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  .account-circle-btn {
+    position: absolute;
+    right: max(16px, calc((100% - 640px) / 2 + 16px));
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 700;
+    transition: opacity 0.15s;
   }
-  .account-btn.logged-in { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 15px; }
-  .account-btn:active { opacity: 0.85; }
+  .account-circle-btn:active { opacity: 0.75; }
+  .account-circle-btn.logged-in {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .account-circle-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
   .toggle-row { display: flex; gap: 10px; margin-bottom: 20px; }
-  .seg-toggle { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 10px 6px; border-radius: 12px; background: var(--surface-2); user-select: none; cursor: pointer; }
-  .seg-option { font-size: 13px; font-weight: 400; color: var(--text-muted); opacity: 0.55; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
-  .seg-option.active { font-weight: 700; color: var(--text); opacity: 1; }
-  .seg-sep { font-size: 13px; color: var(--text-muted); opacity: 0.4; }
   .daycount-toggle {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px;
     padding: 10px 6px; border-radius: 12px; background: var(--accent); color: var(--accent-text);
@@ -163,11 +185,10 @@
   .search-wrap { position: relative; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
   .search-wrap input { flex: 1; min-width: 0; }
   .search-wrap input::placeholder { color: var(--text-muted); opacity: 0.55; }
-  .area-heading { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 2px 2px; }
-  .manual-panel select { width: 100%; }
   .plus-btn { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-size: 24px; line-height: 1; cursor: pointer; padding: 0; }
   .plus-btn:active { opacity: 0.8; }
   .manual-panel { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; padding: 12px; border: 1.5px dashed var(--border); border-radius: 12px; }
+  .manual-panel select { width: 100%; }
 
   .selected-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .done-chip {
@@ -182,15 +203,6 @@
     display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
   }
   .done-x:active { background: rgba(0,0,0,0.28); }
-  .tag {
-    display: flex; align-items: center; gap: 6px; background: var(--chip-bg); border: 1px solid var(--border);
-    border-radius: 999px; padding: 7px 8px 7px 15px; font-size: 17.55px;
-  }
-  .tag button {
-    border: none; background: none; color: var(--text-muted); font-size: 20.25px; line-height: 1; cursor: pointer;
-    padding: 3px 7px; border-radius: 50%;
-  }
-  .tag button:active { background: var(--border); }
   .btn { display: block; width: 100%; padding: 12px 0; border-radius: 10px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 12px; }
   .btn-primary { background: var(--accent); color: var(--accent-text); }
   .btn-primary:disabled { opacity: 0.5; }
@@ -269,18 +281,10 @@
   }
   .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; margin-bottom: 12px; }
   .modal-close { border: none; background: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 2px 6px; }
-  .acc-tabs { display: flex; gap: 6px; background: var(--surface-2); border-radius: 12px; padding: 4px; }
-  .acc-tab { flex: 1; text-align: center; padding: 8px 0; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
-  .acc-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
   .lang-row { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
   .lang-toggle { display: flex; gap: 8px; margin-top: 8px; }
   .lang-btn { flex: 1; text-align: center; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted); font-size: 14px; font-weight: 600; cursor: pointer; }
   .lang-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-  .logged-in-row { display: flex; align-items: center; gap: 12px; padding: 6px 0 18px; }
-  .avatar-circle {
-    width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
-    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; flex-shrink: 0;
-  }
 </style>
 </head>
 <body>
@@ -292,6 +296,7 @@
       <span class="dbx-label">Date</span>
       <input type="date" id="dateInput">
     </div>
+    <button class="account-circle-btn" id="accountCircleBtn" onclick="goToAccount()" aria-label="Account"></button>
   </div>
 
   <div class="toggle-row">
@@ -310,7 +315,6 @@
 
   <!-- MY DAY VIEW -->
   <div id="viewMine">
-
     <div class="signin-prompt" id="signInPrompt" style="display:none;">
       <h3>Sign in to track your routes</h3>
       <p>Your routes are saved to your account and visible to your team.</p>
@@ -318,7 +322,6 @@
     </div>
 
     <div class="work-area">
-
       <div style="margin-top:14px;">
         <div class="search-wrap">
           <input type="text" id="routeSearch" placeholder="Search route number or name..." oninput="renderRouteGrid()">
@@ -328,7 +331,7 @@
           <input type="text" id="manualCode" inputmode="numeric" placeholder="Route number" oninput="onManualCodeInput()">
           <div class="auto-note" id="manualHint" style="margin:0;"></div>
           <input type="text" id="manualName" placeholder="Route name (optional)">
-<select id="manualArea"></select>
+          <select id="manualArea"></select>
           <button class="btn btn-primary" id="manualAddBtn" onclick="addManualRoute()" style="margin-top:8px;">Add as completed</button>
         </div>
         <div class="route-grid" id="routeGrid"></div>
@@ -340,7 +343,6 @@
       <label class="field-label section-title-lg" style="margin-top:16px;">Today's routes</label>
       <div class="selected-tags" id="todayTags"></div>
     </div>
-
   </div>
 
   <!-- TEAM VIEW -->
@@ -362,7 +364,6 @@
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="menu-item" id="menuHistory" onclick="openHistory()">Recent history</div>
     <div class="menu-item" id="menuStats" onclick="openStats()">Statistics</div>
-    <div class="menu-item" id="menuAccount" onclick="window.location.href='account.html'">Account</div>
     <div class="lang-row">
       <span class="field-label" style="margin:0;">Language</span>
       <div class="lang-toggle">
@@ -403,44 +404,8 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="accountOverlay" onclick="closeAccountPanelOnOverlay(event)">
-  <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span id="modalTitle">Account</span>
-      <button class="modal-close" onclick="closeAccountPanel()">&times;</button>
-    </div>
-
-    <div id="loggedOutView">
-      <div class="acc-tabs">
-        <div class="acc-tab active" id="accTabLogin" onclick="setAccMode('login')">Log in</div>
-        <div class="acc-tab" id="accTabSignup" onclick="setAccMode('signup')">Create account</div>
-      </div>
-      <label class="field-label" style="margin-top:14px;">Email</label>
-      <input type="text" id="accEmail" placeholder="you@example.com" autocomplete="username">
-      <label class="field-label" style="margin-top:10px;">Password</label>
-      <input type="password" id="accPassword" placeholder="••••••••" autocomplete="current-password">
-      <button class="btn btn-primary" id="accSubmitBtn" onclick="submitAccountForm()">Log in</button>
-      <div class="status-msg" id="accStatusMsg"></div>
-    </div>
-
-    <div id="loggedInView" style="display:none;">
-      <div class="logged-in-row">
-        <div class="avatar-circle" id="loggedInAvatar"></div>
-        <div>
-          <div style="font-weight:700;" id="loggedInEmail"></div>
-          <div style="font-size:12px; color:var(--text-muted);" id="loggedInSub">Signed in</div>
-        </div>
-      </div>
-      <button class="btn" id="logoutBtn" onclick="logoutAccount()" style="background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">Log out</button>
-    </div>
-
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-// Supabase connection. The publishable key is designed for browser use;
-// database access is protected by the Row Level Security policies.
 const SUPABASE_URL = "https://pdbtmsjimjsmuipkoszo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cBTHQ8KJ3Sw5wJcRffYYdA_kE-qI-NS";
 let supabaseClient = null;
@@ -456,7 +421,6 @@ try {
 }
 
 // ---------- Route data ----------
-// [code, label]  label "" means no label given yet
 const EVEN_ROUTES = [
 ["923503","135B1"],["923504","135B2"],["923602","136B1"],["923603","136B2"],["923702","137B"],
 ["923801","138A"],["923903","139B1"],["923904","139B2"],["924003","140B1"],["924004","140B2"],
@@ -698,9 +662,12 @@ function toggleMenu() {
   const isOpen = document.getElementById("menuOverlay").classList.contains("open");
   if (isOpen) closeMenu(); else openMenu();
 }
-function openAccountFromMenu() { closeMenu(); openAccountPanel(); }
 function openHistory() { closeMenu(); document.getElementById("historyOverlay").classList.add("open"); }
 function closeHistory() { document.getElementById("historyOverlay").classList.remove("open"); }
+
+function goToAccount() {
+  window.location.href = "account.html";
+}
 
 async function removeTodayRoute(code) {
   todayRoutes = todayRoutes.filter(r => r.code !== code);
@@ -709,10 +676,6 @@ async function removeTodayRoute(code) {
 }
 
 let saveInFlight = false, savePending = false;
-
-function withTimeout(p, ms) {
-  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
-}
 
 async function saveTodayRoutes() {
   if (!db || !myId) return;
@@ -828,7 +791,7 @@ async function renderTeamList(docs) {
   docs.sort((a,b) => (a.person_name || profiles[a.user_id] || "").localeCompare(b.person_name || profiles[b.user_id] || ""));
   el.innerHTML = "";
   docs.forEach(d => {
-    const name = d.person_name || profiles[d.user_id] || "Someone";
+    const name = (profiles[d.user_id]) || d.person_name || "Someone";
     const time = d.submitted_at ? new Date(d.submitted_at).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"}) : "";
     const routesHtml = (d.routes || []).map(r => {
       const color = areaColor(findAreaForCode(r.code, d.day_type), d.day_type);
@@ -904,23 +867,31 @@ function subscribeTeam() {
     .subscribe();
 }
 
+// Load the best available name from the profile, then user metadata, then email prefix.
+async function getBestDisplayName(user) {
+  if (!user) return "";
+  if (db) {
+    try {
+      const { data } = await db.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
+      if (data && data.display_name) return data.display_name;
+    } catch (e) { /* fall through */ }
+  }
+  if (user.user_metadata && user.user_metadata.display_name) return user.user_metadata.display_name;
+  return (user.email || "Employee").split("@")[0];
+}
+
 async function startAppForUser(user) {
   myId = user ? user.id : null;
   myName = "";
   currentAccount = user ? { email: user.email || "" } : null;
   if (user) {
-    try {
-      const { data, error } = await db.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
-      if (!error && data) myName = data.display_name || "";
-    } catch (e) { console.error(e); }
-    if (!myName) myName = (user.email || "Employee").split("@")[0];
+    myName = await getBestDisplayName(user);
   }
-  renderAccountUI();
+  updateAccountCircle();
 
   const prompt = document.getElementById("signInPrompt");
   if (prompt) prompt.style.display = user ? "none" : "block";
 
-  // Area assignments are public data — keep them subscribed even when signed out.
   subscribeCustom();
 
   if (!user) {
@@ -939,6 +910,40 @@ async function startAppForUser(user) {
   await loadTodayRoutes();
   if (currentDocDayType && currentDocDayType !== dayType) setDayType(currentDocDayType, false, true);
   updateAddButtonState();
+}
+
+async function updateAccountCircle() {
+  const btn = document.getElementById("accountCircleBtn");
+  if (!btn) return;
+  if (!myId) {
+    btn.classList.remove("logged-in");
+    btn.title = "Sign in";
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    return;
+  }
+  btn.classList.add("logged-in");
+  let displayName = myName || "";
+  let avatarUrl = null;
+  try {
+    const { data } = await db.from("profiles").select("display_name,avatar_url").eq("id", myId).maybeSingle();
+    if (data) {
+      if (data.display_name) { displayName = data.display_name; myName = data.display_name; }
+      if (data.avatar_url) avatarUrl = data.avatar_url;
+    }
+  } catch (e) { /* ignore */ }
+  if (!displayName && currentAccount) displayName = currentAccount.email || "";
+  const initial = (displayName || "?").charAt(0).toUpperCase();
+  btn.title = displayName || "Account";
+  if (avatarUrl) {
+    btn.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = avatarUrl;
+    img.alt = displayName || "Profile";
+    img.onerror = () => { btn.innerHTML = ""; btn.textContent = initial; };
+    btn.appendChild(img);
+  } else {
+    btn.textContent = initial;
+  }
 }
 
 async function init() {
@@ -972,8 +977,6 @@ async function init() {
 
 // ---------- Shared custom routes ----------
 
-// Route -> street (area) assignments. Kept in the file so the app works
-// even when Supabase is unreachable, and used as the seed source.
 const AREA_ASSIGNMENTS = {
   even: {
     "Kytkintie/4000": [
@@ -1052,7 +1055,6 @@ const AREA_ASSIGNMENTS = {
   }
 };
 
-// Flatten once into the shape the app uses in memory.
 const DEFAULT_CUSTOM_ROUTES = (() => {
   const out = [];
   Object.keys(AREA_ASSIGNMENTS).forEach(dt => {
@@ -1065,9 +1067,6 @@ const DEFAULT_CUSTOM_ROUTES = (() => {
   return out;
 })();
 
-// Live, in-memory assignments. Starts as the built-in snapshot so the first
-// render has data; subscribeCustom() then swaps in whatever Supabase has,
-// and keeps it in sync in real time.
 let customRoutes = DEFAULT_CUSTOM_ROUTES.slice();
 let unsubCustom = null;
 let customReconnectTimer = null;
@@ -1130,7 +1129,6 @@ function mapRowToCustom(row) {
 }
 
 async function fetchAllCustomRoutes() {
-  // Page through the table so >1000 rows are handled.
   const PAGE = 1000;
   const out = [];
   let from = 0;
@@ -1154,8 +1152,6 @@ async function refreshCustomRoutes() {
   if (!db) return;
   try {
     const rows = await fetchAllCustomRoutes();
-    // Only replace when the table actually has rows; otherwise keep the
-    // built-in defaults so a fresh, unseeded project still shows areas.
     if (rows.length > 0) {
       customRoutes = rows.map(mapRowToCustom);
     }
@@ -1168,14 +1164,9 @@ async function refreshCustomRoutes() {
 
 function subscribeCustom() {
   if (!db) return;
-
-  // Tear down any previous channel / pending reconnect.
   if (unsubCustom) { try { db.removeChannel(unsubCustom); } catch (e) {} unsubCustom = null; }
   if (customReconnectTimer) { clearTimeout(customReconnectTimer); customReconnectTimer = null; }
-
-  // Initial pull (with paging).
   refreshCustomRoutes();
-
   const channel = db
     .channel("shared-custom-routes")
     .on(
@@ -1207,7 +1198,6 @@ function subscribeCustom() {
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        // Re-fetch on (re)connect to reconcile anything we missed offline.
         refreshCustomRoutes();
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         console.warn("Realtime custom_routes channel status:", status);
@@ -1219,11 +1209,9 @@ function subscribeCustom() {
         }
       }
     });
-
   unsubCustom = channel;
 }
 
-// Upsert one (dayType, code) assignment. Applies locally first for instant UI.
 async function saveRouteArea(dayType, code, label, area) {
   const entry = {
     code,
@@ -1233,14 +1221,11 @@ async function saveRouteArea(dayType, code, label, area) {
     addedBy:  (currentAccount && currentAccount.email) || myName || "anonymous",
     addedAt:  Date.now()
   };
-
-  // Optimistic local update.
   const idx = customRoutes.findIndex(r => r.dayType === dayType && r.code === code);
   if (idx >= 0) customRoutes[idx] = { ...customRoutes[idx], ...entry };
   else customRoutes.push(entry);
   renderRouteGrid();
   renderTodayTags();
-
   if (!db) return;
   try {
     const { error } = await db.from("custom_routes").upsert(
@@ -1307,9 +1292,7 @@ async function addManualRoute() {
   const existing = findRouteAnywhere(code);
   if (existing && !label) label = existing.label;
   const docDay = existing ? existing.dayType : dayType;
-
   await saveRouteArea(docDay, code, label, area);
-
   if (!todayRoutes.some(r => r.code === code)) {
     todayRoutes.push({ code: code, label: label, manual: true });
     await saveTodayRoutes();
@@ -1454,7 +1437,7 @@ async function downloadStats() {
       (profileRows || []).forEach(p => { profiles[p.id] = p.display_name; });
     }
     const personKey = d => d.user_id || ("legacy:" + (d.person_name || "Unknown"));
-    const nameOf = d => d.person_name || profiles[d.user_id] || T("statsUnknown");
+    const nameOf = d => profiles[d.user_id] || d.person_name || T("statsUnknown");
     const locale = currentLang === "fi" ? "fi-FI" : "en-US";
     const weekday = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString(locale, { weekday: "long" }); };
 
@@ -1499,94 +1482,8 @@ async function downloadStats() {
   btn.disabled = false;
 }
 
-// ---------- Account (Supabase email authentication) ----------
+// ---------- Account state ----------
 let currentAccount = null;
-let accMode = "login";
-
-function openAccountPanel() { document.getElementById("accountOverlay").classList.add("open"); }
-function closeAccountPanel() {
-  document.getElementById("accountOverlay").classList.remove("open");
-  document.getElementById("accStatusMsg").textContent = "";
-}
-function closeAccountPanelOnOverlay(e) { if (e.target.id === "accountOverlay") closeAccountPanel(); }
-
-function setAccMode(mode) {
-  accMode = mode;
-  document.getElementById("accTabLogin").classList.toggle("active", mode === "login");
-  document.getElementById("accTabSignup").classList.toggle("active", mode === "signup");
-  document.getElementById("accSubmitBtn").textContent = mode === "login" ? T("login") : T("createAccount");
-  document.getElementById("accStatusMsg").textContent = "";
-}
-
-async function submitAccountForm() {
-  const statusEl = document.getElementById("accStatusMsg");
-  statusEl.className = "status-msg";
-  statusEl.textContent = "";
-  const email = (document.getElementById("accEmail").value || "").trim();
-  const password = document.getElementById("accPassword").value || "";
-  if (!email || !password) {
-    statusEl.textContent = T("fillBoth"); statusEl.classList.add("err"); return;
-  }
-  const btn = document.getElementById("accSubmitBtn");
-  btn.disabled = true;
-  try {
-    if (!db || !db.auth) {
-      throw supabaseInitError || new Error("Supabase is not initialized. Check the connection settings and refresh the page.");
-    }
-    if (accMode === "signup") {
-      const { data, error } = await db.auth.signUp({
-        email, password,
-        options: {
-          data: { display_name: email.split("@")[0] },
-          emailRedirectTo: new URL("account.html", window.location.href).href
-        }
-      });
-      if (error) throw error;
-      if (data.session) {
-        statusEl.textContent = "Account created and signed in.";
-        statusEl.classList.add("ok");
-      } else {
-        statusEl.textContent = "Account created. Check your email to confirm it, then log in.";
-        statusEl.classList.add("ok");
-      }
-    } else {
-      const { error } = await db.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      statusEl.textContent = "Signed in.";
-      statusEl.classList.add("ok");
-      document.getElementById("accPassword").value = "";
-      setTimeout(closeAccountPanel, 500);
-    }
-  } catch (e) {
-    console.error("Authentication error:", e);
-    const detail = e && e.message ? e.message : T("genericError");
-    statusEl.textContent = detail;
-    statusEl.classList.add("err");
-  }
-  btn.disabled = false;
-}
-
-async function logoutAccount() {
-  const { error } = await db.auth.signOut();
-  if (error) console.error("Sign out failed:", error);
-}
-
-function renderAccountUI() {
-  const loggedOut = document.getElementById("loggedOutView");
-  const loggedIn = document.getElementById("loggedInView");
-  const menuAccount = document.getElementById("menuAccount");
-  if (currentAccount) {
-    loggedOut.style.display = "none";
-    loggedIn.style.display = "block";
-    document.getElementById("loggedInEmail").textContent = currentAccount.email;
-    document.getElementById("loggedInAvatar").textContent = currentAccount.email.charAt(0).toUpperCase();
-    if (menuAccount) menuAccount.textContent = currentAccount.email;
-  } else {
-    loggedOut.style.display = "block";
-    loggedIn.style.display = "none";
-    if (menuAccount) menuAccount.textContent = T("account");
-  }
-}
 
 // ---------- Language ----------
 let currentLang = "en";
@@ -1606,7 +1503,6 @@ const STRINGS = {
     statsColDate: "Date", statsColDay: "Day", statsColPerson: "Person", statsColNumbers: "Numbers", statsColCount: "Routes done", statsColRoutes: "Routes",
     statsColDays: "Days worked", statsColTotal: "Total routes", statsSheetByDay: "Routes by day", statsSheetPerPerson: "Per person",
     oddNumbers: "Odd numbers", evenNumbers: "Even numbers", fillBoth: "Enter both email and password.", noStorage: "Not connected yet — try again in a moment.",
-    accountExists: "An account with that email already exists.", wrongCreds: "Incorrect email or password.",
     genericError: "Something went wrong. Try again.",
     pickFirst: "Tap a route first, then press Add.", menu: "Menu", removeTitle: "Remove route?", removeText: "Remove {code} from today's routes?", cancel: "Cancel", remove: "Remove", addedPick: "Added. Pick your next route.", routeExists: "Already in system", pickToUpdate: "Choose an area to update it.", updatedRoute: "Route updated.", ungrouped: "Ungrouped", chooseArea: "Choose an area.", areaPh: "Choose area...", manualCodePh: "Route number", manualNamePh: "Route name (optional)", addCompleted: "Add as completed",
     enterRouteNumber: "Enter a route number.", alreadyAdded: "Already on today's list.", addedManual: "Route added as completed."
@@ -1626,7 +1522,6 @@ const STRINGS = {
     statsColDate: "Päivämäärä", statsColDay: "Viikonpäivä", statsColPerson: "Henkilö", statsColNumbers: "Numerot", statsColCount: "Reittejä", statsColRoutes: "Reitit",
     statsColDays: "Työpäiviä", statsColTotal: "Reittejä yhteensä", statsSheetByDay: "Reitit päivittäin", statsSheetPerPerson: "Henkilöittäin",
     oddNumbers: "Parittomat numerot", evenNumbers: "Parilliset numerot", fillBoth: "Täytä sähköposti ja salasana.", noStorage: "Ei yhteyttä — yritä hetken kuluttua uudelleen.",
-    accountExists: "Tällä sähköpostilla on jo tili.", wrongCreds: "Väärä sähköposti tai salasana.",
     genericError: "Jokin meni pieleen. Yritä uudelleen.",
     pickFirst: "Valitse ensin reitti ja paina Lisää.", menu: "Valikko", removeTitle: "Poistetaanko reitti?", removeText: "Poistetaanko {code} päivän reiteistä?", cancel: "Peruuta", remove: "Poista", addedPick: "Lisätty. Valitse seuraava reitti.", routeExists: "Jo järjestelmässä", pickToUpdate: "Valitse alue päivittääksesi.", updatedRoute: "Reitti päivitetty.", ungrouped: "Ryhmittelemättömät", chooseArea: "Valitse alue.", areaPh: "Valitse alue...", manualCodePh: "Reitin numero", manualNamePh: "Reitin nimi (valinnainen)", addCompleted: "Lisää suoritettuna",
     enterRouteNumber: "Anna reitin numero.", alreadyAdded: "Jo päivän listalla.", addedManual: "Reitti lisätty suoritettuna."
@@ -1666,12 +1561,6 @@ function applyLanguage() {
   document.getElementById("confirmOk").textContent = T("remove");
   const filterLabel = document.querySelector('[data-t="filterByDay"]');
   if (filterLabel) filterLabel.textContent = T("filterByDay");
-  document.getElementById("accTabLogin").textContent = T("login");
-  document.getElementById("accTabSignup").textContent = T("createAccount");
-  document.getElementById("logoutBtn").textContent = T("logOut");
-  document.getElementById("accSubmitBtn").textContent = accMode === "login" ? T("login") : T("createAccount");
-  document.getElementById("modalTitle").textContent = T("account");
-  if (!currentAccount) { const ma = document.getElementById("menuAccount"); if (ma) ma.textContent = T("account"); }
 }
 
 function initAccountAndLanguage() {
@@ -1683,8 +1572,25 @@ function initAccountAndLanguage() {
   document.getElementById("langFi").classList.toggle("active", currentLang === "fi");
   applyLanguage();
   currentAccount = null;
-  renderAccountUI();
+  updateAccountCircle();
 }
+
+// ---------- Refresh profile on resume ----------
+async function refreshProfileOnResume() {
+  if (!myId || !db) return;
+  try {
+    const fresh = await getBestDisplayName({ id: myId, email: currentAccount ? currentAccount.email : "", user_metadata: null });
+    if (fresh && fresh !== myName) {
+      myName = fresh;
+      if (todayRoutes.length > 0) {
+        await saveTodayRoutes();
+      }
+    }
+  } catch (e) { /* ignore */ }
+  updateAccountCircle();
+}
+window.addEventListener("focus", refreshProfileOnResume);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshProfileOnResume(); });
 
 // ---------- Header: hide on scroll down, show on scroll up ----------
 (function () {

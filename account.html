@@ -18,7 +18,6 @@
     --success: #3d7a5c;
     --success-soft: #e3efe8;
     --danger: #b5473a;
-    --chip-bg: #eaeef1;
     --border-faint: rgba(28, 38, 47, 0.055);
     --shadow: 0 1px 2px rgba(30,45,58,0.06), 0 2px 8px rgba(30,45,58,0.06);
   }
@@ -28,7 +27,7 @@
       --text: #eaeef1; --text-muted: #93a3ae; --border: #2d3943;
       --accent: #7ea1b8; --accent-text: #0e1418; --accent-soft: #24333d;
       --success: #6fbb92; --success-soft: #1c332a; --danger: #e0857a;
-      --chip-bg: #232c34; --border-faint: rgba(234,238,241,0.06);
+      --border-faint: rgba(234,238,241,0.06);
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.3);
     }
   }
@@ -37,7 +36,7 @@
     --text: #eaeef1; --text-muted: #93a3ae; --border: #2d3943;
     --accent: #7ea1b8; --accent-text: #0e1418; --accent-soft: #24333d;
     --success: #6fbb92; --success-soft: #1c332a; --danger: #e0857a;
-    --chip-bg: #232c34; --border-faint: rgba(234,238,241,0.06);
+    --border-faint: rgba(234,238,241,0.06);
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.3);
   }
   * { box-sizing: border-box; }
@@ -189,6 +188,7 @@
           Change photo
           <input type="file" id="photoInput" accept="image/png,image/jpeg,image/webp">
         </label>
+        <div class="hint" style="margin-top:6px;">JPG, PNG or WebP, up to 5 MB.</div>
       </div>
     </div>
 
@@ -399,8 +399,8 @@ document.getElementById("photoInput").addEventListener("change", (e) => {
     setStatus("profileStatus", "Please choose a JPG, PNG or WebP image.", "err");
     e.target.value = ""; return;
   }
-  if (f.size > 3 * 1024 * 1024) {
-    setStatus("profileStatus", "The image must be 3 MB or smaller.", "err");
+  if (f.size > 5 * 1024 * 1024) {
+    setStatus("profileStatus", "The image must be 5 MB or smaller.", "err");
     e.target.value = ""; return;
   }
   pendingPhoto = f;

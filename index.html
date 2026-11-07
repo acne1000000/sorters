@@ -269,7 +269,7 @@
 </head>
 <body>
 <div class="app">
-  <button class="plain-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menu"></button>
+  <button class="plain-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
   <div class="header-spacer-block"></div>
   <div class="header-row" id="headerRow">
     <div class="date-box">
@@ -339,7 +339,7 @@
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="menu-item" id="menuHistory" onclick="openHistory()">Recent history</div>
     <div class="menu-item" id="menuStats" onclick="openStats()">Statistics</div>
-    <div class="menu-item" id="menuAccount" onclick="openAccountFromMenu()">Account</div>
+    <div class="menu-item" id="menuAccount" onclick="window.location.href='account.html'">Account</div>
     <div class="lang-row">
       <span class="field-label" style="margin:0;">Language</span>
       <div class="lang-toggle">

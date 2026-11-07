@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Tracker</title>
+<style>
+  :root {
+    --bg: #f3f5f7;
+    --surface: #ffffff;
+    --surface-2: #eaeef1;
+    --text: #1c262f;
+    --text-muted: #647686;
+    --border: #dde3e8;
+    --accent: #354e62;
+    --accent-text: #ffffff;
+    --accent-soft: #dde6ec;
+    --success: #3d7a5c;
+    --success-soft: #e3efe8;
+    --danger: #b5473a;
+    --chip-bg: #eaeef1;
+    --border-faint: rgba(28, 38, 47, 0.055);
+    --shadow: 0 1px 2px rgba(30,45,58,0.06), 0 2px 8px rgba(30,45,58,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12171b;
+      --surface: #1a2229;
+      --surface-2: #232c34;
+      --text: #eaeef1;
+      --text-muted: #93a3ae;
+      --border: #2d3943;
+      --accent: #7ea1b8;
+      --accent-text: #0e1418;
+      --accent-soft: #24333d;
+      --success: #6fbb92;
+      --success-soft: #1c332a;
+      --danger: #e0857a;
+      --chip-bg: #232c34;
+      --border-faint: rgba(234, 238, 241, 0.06);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12171b;
+    --surface: #1a2229;
+    --surface-2: #232c34;
+    --text: #eaeef1;
+    --text-muted: #93a3ae;
+    --border: #2d3943;
+    --accent: #7ea1b8;
+    --accent-text: #0e1418;
+    --accent-soft: #24333d;
+    --success: #6fbb92;
+    --success-soft: #1c332a;
+    --danger: #e0857a;
+    --chip-bg: #232c34;
+    --border-faint: rgba(234, 238, 241, 0.06);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.3);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 640px; width: 100%; margin: 0 auto; padding: 16px 16px 48px; overflow-x: hidden; }
+  .header-row {
+    position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 40;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 max(16px, calc((100% - 640px) / 2 + 16px));
+    background: var(--bg); transition: transform 0.25s ease;
+  }
+  .header-row.hidden { transform: translateY(-110%); }
+  .plain-btn.hidden { transform: translateY(-110%); }
+  .header-spacer-block { height: calc(env(safe-area-inset-top, 0px) + 56px); }
+  .plain-btn {
+    position: fixed; z-index: 1100;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: max(16px, calc((100% - 640px) / 2 + 16px));
+    width: 40px; height: 40px; border: none; background: none; color: var(--text);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; margin-left: -8px;
+    transition: transform 0.25s ease;
+  }
+  .plain-btn:active { opacity: 0.6; }
+  .logo-img-small { width: 30px; height: 30px; border-radius: 8px; display: block; }
+  .account-btn {
+    width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border);
+    background: var(--surface-2); color: var(--text); font-size: 18px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  }
+  .account-btn.logged-in { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 15px; }
+  .account-btn:active { opacity: 0.85; }
+  .toggle-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .seg-toggle { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 10px 6px; border-radius: 12px; background: var(--surface-2); user-select: none; cursor: pointer; }
+  .seg-option { font-size: 13px; font-weight: 400; color: var(--text-muted); opacity: 0.55; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+  .seg-option.active { font-weight: 700; color: var(--text); opacity: 1; }
+  .seg-sep { font-size: 13px; color: var(--text-muted); opacity: 0.4; }
+  .daycount-toggle {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 10px 6px; border-radius: 12px; background: var(--accent); color: var(--accent-text);
+    font-size: 13px; font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .view-toggle-grey { background: var(--surface-2); color: var(--text); }
+  .dot-icon { position: relative; width: 16px; height: 16px; flex-shrink: 0; }
+  .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.32); transition: background 0.15s; }
+  .dot-a { top: 0; left: 0; }
+  .dot-b { bottom: 0; right: 0; }
+  .dot.lit { background: #ffffff; }
+  .view-toggle-grey .dot.lit { background: var(--text); }
+  .view-toggle-grey .dot { background: var(--text-muted); opacity: 0.4; }
+  .view-toggle-grey .dot.lit { opacity: 1; }
+  .view-icon { position: relative; width: 18px; height: 14px; flex-shrink: 0; }
+  .view-icon svg { position: absolute; top: 0; left: 0; }
+  .view-icon .back-person { opacity: 0.4; transition: opacity 0.15s; }
+  .view-icon.team .back-person { opacity: 1; }
+  .daycount-toggle .dcount-label, .daycount-toggle #dayCountLabel { display: inline-block; min-width: 84px; text-align: left; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .work-area { padding: 0 0 18px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  label.field-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 6px; }
+  .field-label.section-title-lg { font-size: 24px; color: var(--text); text-transform: none; letter-spacing: normal; margin-bottom: 10px; font-weight: 700; }
+  input[type="date"], input[type="text"], select {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text); font-size: 15px; font-family: inherit;
+  }
+  input[type="date"]:focus, input[type="text"]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .auto-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 14px; }
+
+  
+  .date-box {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .date-box .dbx-label {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .date-box input[type="date"] {
+    border: none; background: transparent; padding: 0; width: auto;
+    text-align: center; font-weight: 600;
+  }
+
+  .route-grid { margin-top: 26px; }
+  .route-chip {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 8px 3px;
+    cursor: pointer; text-align: center; background: var(--surface); user-select: none;
+  }
+  .route-chip:active { background: var(--surface-2); }
+  .route-chip.selected { border-color: var(--sel, #ffc9e1); background: var(--sel, #ffc9e1); color: #1a1a1a; }
+  .route-chip .rc-code { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .route-chip.selected .rc-code { color: rgba(0,0,0,0.6); }
+  .route-chip .rc-name { font-size: 18px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .empty-note { padding: 16px 12px; color: var(--text-muted); font-size: 13px; text-align: center; }
+  .search-wrap { position: relative; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+  .search-wrap input { flex: 1; min-width: 0; }
+  .search-wrap input::placeholder { color: var(--text-muted); opacity: 0.55; }
+  .area-heading { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 2px 2px; }
+  .manual-panel select { width: 100%; }
+  .plus-btn { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-size: 24px; line-height: 1; cursor: pointer; padding: 0; }
+  .plus-btn:active { opacity: 0.8; }
+  .manual-panel { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; padding: 12px; border: 1.5px dashed var(--border); border-radius: 12px; }
+
+  .selected-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .done-chip {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--sel, #ffc9e1); border-radius: 12px; padding: 10px 18px 8px 10px; min-width: 78px;
+  }
+  .done-chip .rc-name { color: #1a1a1a; font-size: 18px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .done-chip .rc-code { color: rgba(0,0,0,0.6); font-size: 11px; margin-top: 2px; }
+  .done-x {
+    position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.16); color: #1a1a1a; font-size: 13px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  }
+  .done-x:active { background: rgba(0,0,0,0.28); }
+  .tag {
+    display: flex; align-items: center; gap: 6px; background: var(--chip-bg); border: 1px solid var(--border);
+    border-radius: 999px; padding: 7px 8px 7px 15px; font-size: 17.55px;
+  }
+  .tag button {
+    border: none; background: none; color: var(--text-muted); font-size: 20.25px; line-height: 1; cursor: pointer;
+    padding: 3px 7px; border-radius: 50%;
+  }
+  .tag button:active { background: var(--border); }
+  .btn { display: block; width: 100%; padding: 12px 0; border-radius: 10px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-primary:disabled { opacity: 0.5; }
+  .btn-primary:active { opacity: 0.85; }
+  .status-msg { font-size: 13px; margin-top: 8px; text-align: center; }
+  .status-msg.ok { color: var(--success); }
+  .status-msg.err { color: var(--danger); }
+  .history-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-date { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .history-daytype { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; margin-left: 6px; }
+  .history-daytype.even { background: var(--accent-soft); color: var(--accent); }
+  .history-daytype.odd { background: var(--success-soft); color: var(--success); }
+  .history-routes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .history-chip {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--sel, #ffc9e1); border-radius: 9px; padding: 6px 8px; min-width: 56px;
+  }
+  .history-chip .rc-name { color: #1a1a1a; font-size: 13px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .history-chip .rc-code { color: rgba(0,0,0,0.6); font-size: 9px; margin-top: 1px; }
+  .team-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .emp-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--surface-2); }
+  .emp-name { font-weight: 700; font-size: 14px; }
+  .emp-time { font-size: 11px; color: var(--text-muted); }
+  .count-pill { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+
+  .acc-section { border-top: 1px solid var(--border-faint, var(--border)); background: transparent; opacity: 1; }
+  .acc-section:last-child { border-bottom: 1px solid var(--border-faint, var(--border)); }
+  .acc-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 2px; cursor: pointer; user-select: none; }
+  .acc-name { font-size: 20px; font-weight: 700; line-height: 1.15; }
+  .acc-num { font-size: 13px; font-weight: 300; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em; }
+  .acc-arrow { font-size: 22px; line-height: 20.4px; height: 20.4px; color: var(--text-muted); font-weight: 600; display: inline-block; transition: transform 0.2s ease; }
+  .acc-section.open .acc-arrow { transform: rotate(90deg); }
+  .acc-body { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 0 14px; }
+  .acc-section.open .acc-body { display: grid; }
+  .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; z-index: 1000; }
+  .drawer-overlay.open { display: block; }
+  .drawer { background: var(--surface); width: 78%; max-width: 300px; height: 100%; padding: calc(env(safe-area-inset-top, 0px) + 70px) 18px 18px; box-shadow: var(--shadow); overflow-y: auto; }
+  .menu-item { padding: 10px 4px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+  .modal-overlay.center { align-items: center; padding: 20px; }
+  .confirm-card { border-radius: 18px; }
+  .confirm-btns { display: flex; gap: 10px; margin-top: 6px; }
+  .confirm-btns .btn { margin-top: 12px; }
+  .spinner-note { color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: flex-end; justify-content: center; z-index: 1000;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-card {
+    background: var(--surface); border-radius: 18px 18px 0 0; padding: 18px 18px 28px;
+    width: 100%; max-width: 480px; box-shadow: var(--shadow);
+    max-height: 85vh; overflow-y: auto;
+  }
+  @media (min-width: 520px) {
+    .modal-overlay { align-items: center; }
+    .modal-card { border-radius: 18px; }
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+  .modal-close { border: none; background: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 2px 6px; }
+  .acc-tabs { display: flex; gap: 6px; background: var(--surface-2); border-radius: 12px; padding: 4px; }
+  .acc-tab { flex: 1; text-align: center; padding: 8px 0; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+  .acc-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .lang-row { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .lang-toggle { display: flex; gap: 8px; margin-top: 8px; }
+  .lang-btn { flex: 1; text-align: center; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .lang-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .logged-in-row { display: flex; align-items: center; gap: 12px; padding: 6px 0 18px; }
+  .avatar-circle {
+    width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <button class="plain-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menu"></button>
+  <div class="header-spacer-block"></div>
+  <div class="header-row" id="headerRow">
+    <div class="date-box">
+      <span class="dbx-label">Date</span>
+      <input type="date" id="dateInput">
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <div class="daycount-toggle view-toggle-grey" id="viewToggle" onclick="toggleViewTab()">
+      <span class="view-icon" id="viewIcon">
+        <svg width="12" height="14" viewBox="0 0 16 18" fill="currentColor" class="back-person" style="left:6px;"><circle cx="8" cy="5" r="3.4"/><path d="M1.5 17c0-3.8 2.9-6.1 6.5-6.1s6.5 2.3 6.5 6.1"/></svg>
+        <svg width="12" height="14" viewBox="0 0 16 18" fill="currentColor"><circle cx="8" cy="5" r="3.4"/><path d="M1.5 17c0-3.8 2.9-6.1 6.5-6.1s6.5 2.3 6.5 6.1"/></svg>
+      </span>
+      <span id="viewLabel" style="display:inline-block; min-width:70px; text-align:left;">My day</span>
+    </div>
+    <div class="daycount-toggle" id="dayCountToggle" onclick="toggleDayType()">
+      <span class="dot-icon"><span class="dot dot-a" id="dotA"></span><span class="dot dot-b" id="dotB"></span></span>
+      <span id="dayCountLabel" style="display:inline-block; min-width:104px; text-align:left;">Odd numbers</span>
+    </div>
+  </div>
+
+  <!-- MY DAY VIEW -->
+  <div id="viewMine">
+    <div class="work-area">
+
+      <div style="margin-top:14px;">
+        <div class="search-wrap">
+          <input type="text" id="routeSearch" placeholder="Search route number or name..." oninput="renderRouteGrid()">
+          <button class="plus-btn" id="plusBtn" onclick="toggleManual()" aria-label="Add route manually">+</button>
+        </div>
+        <div class="manual-panel" id="manualPanel" style="display:none;">
+          <input type="text" id="manualCode" inputmode="numeric" placeholder="Route number" oninput="onManualCodeInput()">
+          <div class="auto-note" id="manualHint" style="margin:0;"></div>
+          <input type="text" id="manualName" placeholder="Route name (optional)">
+<select id="manualArea"></select>
+          <button class="btn btn-primary" id="manualAddBtn" onclick="addManualRoute()" style="margin-top:8px;">Add as completed</button>
+        </div>
+        <div class="route-grid" id="routeGrid"></div>
+      </div>
+
+      <button class="btn btn-primary" id="submitBtn" onclick="addRouteToDay()">Add route</button>
+      <div class="status-msg" id="statusMsg" style="margin-bottom: 28px;"></div>
+
+      <label class="field-label section-title-lg" style="margin-top:16px;">Today's routes</label>
+      <div class="selected-tags" id="todayTags"></div>
+    </div>
+
+  </div>
+
+  <!-- TEAM VIEW -->
+  <div id="viewTeam" style="display:none;">
+    <div class="card">
+      <div class="team-header">
+        <div style="flex:1;">
+          <label class="field-label" data-t="filterByDay">Filter by day</label>
+          <input type="date" id="teamDateInput">
+        </div>
+        <div class="count-pill" id="teamCount">0 submitted</div>
+      </div>
+      <div id="teamList" class="spinner-note">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="menuOverlay" onclick="closeMenu()">
+  <div class="drawer" onclick="event.stopPropagation()">
+    <div class="menu-item" id="menuHistory" onclick="openHistory()">Recent history</div>
+    <div class="menu-item" id="menuStats" onclick="openStats()">Statistics</div>
+    <div class="menu-item" id="menuAccount" onclick="openAccountFromMenu()">Account</div>
+    <div class="lang-row">
+      <span class="field-label" style="margin:0;">Language</span>
+      <div class="lang-toggle">
+        <div class="lang-btn" id="langEn" onclick="setLanguage('en')">English</div>
+        <div class="lang-btn" id="langFi" onclick="setLanguage('fi')">Suomi</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="statsOverlay" onclick="if(event.target.id==='statsOverlay')closeStats()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header"><span id="statsTitle">Statistics</span><button class="modal-close" onclick="closeStats()">&times;</button></div>
+    <label class="field-label" id="statsFromLabel">From</label>
+    <input type="date" id="statsFrom" style="display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;min-height:44px;text-align:left;">
+    <label class="field-label" id="statsToLabel" style="margin-top:12px;">To</label>
+    <input type="date" id="statsTo" style="display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;min-height:44px;text-align:left;">
+    <button class="btn btn-primary" id="statsBtn" onclick="downloadStats()">Download Excel</button>
+    <div class="status-msg" id="statsMsg"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="historyOverlay" onclick="if(event.target.id==='historyOverlay')closeHistory()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header"><span id="historyTitle">Recent history</span><button class="modal-close" onclick="closeHistory()">&times;</button></div>
+    <div id="historyList" class="spinner-note">Loading...</div>
+  </div>
+</div>
+
+<div class="modal-overlay center" id="confirmOverlay" onclick="if(event.target.id==='confirmOverlay')closeConfirm()">
+  <div class="modal-card confirm-card" onclick="event.stopPropagation()">
+    <div class="modal-header"><span id="confirmTitle">Remove route?</span></div>
+    <div id="confirmText" style="font-size:14px; color:var(--text-muted);"></div>
+    <div class="confirm-btns">
+      <button class="btn" id="confirmCancel" onclick="closeConfirm()" style="background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">Cancel</button>
+      <button class="btn btn-primary" id="confirmOk" onclick="confirmRemove()" style="background: var(--danger); color:#fff;">Remove</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accountOverlay" onclick="closeAccountPanelOnOverlay(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="modalTitle">Account</span>
+      <button class="modal-close" onclick="closeAccountPanel()">&times;</button>
+    </div>
+
+    <div id="loggedOutView">
+      <div class="acc-tabs">
+        <div class="acc-tab active" id="accTabLogin" onclick="setAccMode('login')">Log in</div>
+        <div class="acc-tab" id="accTabSignup" onclick="setAccMode('signup')">Create account</div>
+      </div>
+      <label class="field-label" style="margin-top:14px;">Email</label>
+      <input type="text" id="accEmail" placeholder="you@example.com" autocomplete="username">
+      <label class="field-label" style="margin-top:10px;">Password</label>
+      <input type="password" id="accPassword" placeholder="••••••••" autocomplete="current-password">
+      <button class="btn btn-primary" id="accSubmitBtn" onclick="submitAccountForm()">Log in</button>
+      <div class="status-msg" id="accStatusMsg"></div>
+    </div>
+
+    <div id="loggedInView" style="display:none;">
+      <div class="logged-in-row">
+        <div class="avatar-circle" id="loggedInAvatar"></div>
+        <div>
+          <div style="font-weight:700;" id="loggedInEmail"></div>
+          <div style="font-size:12px; color:var(--text-muted);" id="loggedInSub">Signed in</div>
+        </div>
+      </div>
+      <button class="btn" id="logoutBtn" onclick="logoutAccount()" style="background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">Log out</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ---------- Route data ----------
+// [code, label]  label "" means no label given yet
+const EVEN_ROUTES = [
+["923503","135B1"],["923504","135B2"],["923602","136B1"],["923603","136B2"],["923702","137B"],
+["923801","138A"],["923903","139B1"],["923904","139B2"],["924003","140B1"],["924004","140B2"],
+["924006","140C2"],["924202","142B1"],["924204","142B2"],["924502","145B1"],["926009","160A3"],
+["926202","162B1"],["926204","162B2"],["926701","167A"],["926702","167B1"],["926703","167B2"],
+["927001","170A1"],["927004","170A2"],["927005","170A3"],["911006","10B1"],["911007","10B2"],
+["911008","10B3"],["911704","17B2"],["911805","18B1"],["911806","18B2"],["911807","18B3"],
+["911808","18B4"],["912005","20B1"],["912006","20B2"],["912007","20B3"],["912008","20B4"],
+["912103","21B1"],["912104","21B2"],["912204","22B1"],["916402","64B"],["916601","66B1"],
+["916602","66B2"],["916703","67B"],["923007","130B1"],["923008","130B2"],["923009","130B3"],
+["923010","130B4"],["923011","130B5"],["923012","130B6"],["913204","32B2"],["913206","32B3"],
+["914202","42B1"],["914207","42B2"],["914302","43A2"],["916302","63B"],["916401","64A"],
+["911009","10B4"],["911010","10B5"],["911203",""],["911204",""],["911403",""],["911404",""],
+["911504",""],["911506",""],["911602",""],["911603",""],["911703","17B1"],["493301","233B1"],
+["493302","233A1"],["493303","233A2"],["493602","236B"],["493603","236C"],["496302","263B"],
+["497002","270B1"],["497004","270B2"],["497006","270B3"],["497103","271C"],["497605","276B1"],
+["497606","276D1"],["924504","145B2"],["924506","145B3"],["924803","148B1"],["924804","148B2"],
+["924805","148B3"],["925102","151B"],["925104","151B2"],["925105","151B3"],["925202","152B"],
+["926001","160A1"],["926002","160B1"],["926005","160A2"],["912205","22B2"],["912206","22B3"],
+["912504","25B1"],["912505","25B2"],["912506","25B3"],["912507","25B4"],["912603","26B1"],
+["912703","27B1"],["912704","27B2"],["913303","33B1"],["913304","33B2"],["497607","276B2"],
+["497609","276B3"],["497703","277B1"],["497704","277B2"],["497803","278B1"],["497804","278B2"],
+["499405","294C"],["912802","28B1"],["913002","30B1"],["913203","32B1"],
+["492305","223C1"],["492306","223C2"],["492307","223D1"],["492308","223D2"],["492309","223C3"],
+["492403","224C"],["492004","220B3"],["493202","232A2"],["493204","232B1"],["493205","232B2"],
+["491007","210D1"],["491301","213A"],["491302","213B"],["491502","215B1"],["491702","217B1"],
+["491703","217C"],["492101","221A"],["492103","221B1"],["492201","220A1"],["492206","220C2"],
+["492303","223B1"],["492304","223B2"],["496604","266B2"],["497302","273A2"],["497303","273B1"],
+["499402","294B1"],["499404","294B2"],["913503","35B1"],["913504","35B2"],["913601","36B1"],
+["913703","37B"],["913801","38A"],["913902","39B1"],["918402","84B1"],["918502","85B1"],
+["918602","86B"],["919302","93B2"],["919802","98A2"],["919803","98B1"],["919806","98C3"],
+["919807","98B4"],["919808","98D2"],["919811","98B3"],["919903","99B1"],["919904","99B2"],
+["918004","80B1"],["918005","80B2"],["918006","80B3"],["918102","81B1"],["918103","81B2"],
+["918404","84B1"],["918405","84B2"],["914001","40A1"],["914002","40A2"],["914102","41A2"],
+["914103","41B1"],["914104","41B2"],["914105","41B3"],["914402","44C"],["926003","160C1"],
+["926006","160B2"],["927102","171B"],["491005","210B3"],["491006","210B4"],["496002","260B1"],
+["496004","260B2"],["496101","261A"],["496102","261B"],["496201","262A"],["496502","265B1"],
+["496504","265B2"],["496505","265A3"],["496506","265B3"],["496601","266A1"],["496602","266B1"],
+["496603","266A2"]
+];
+const ODD_ROUTES = [
+["919905","99A3"],["919901","99A1"],["919804","98B2"],["919603","96A3"],["919906","99B3"],["919902","99A2"],
+["919809","98A3"],["919801","98A1"],["919601","96A1"],["918801","88A"],["918403","84A3"],["918401","84A1"],
+["918301","83A1"],["919602","96A2"],["919304","93A2"],["918501","85A1"],["918402","84A2"],["918303","83A2"],
+["497101","271A"],["496501","265A1"],["496005","260C"],["496001","260A1"],["497102","271B"],["496503","265A2"],
+["496202","262B"],["496003","260A2"],["922602","126A3"],["922604","126B2"],["922002","120B"],["919702","97A2"],
+["919503","95A3"],["919408","94A3"],["922605","126A2"],["922601","126A1"],["919705","97A3"],["919701","97A1"],
+["919502","95A1"],["918003","80A3"],["918001","80A1"],["915901","59A1"],["915701","57A1"],["915401","54A1"],
+["918101","81A1"],["918002","80A2"],["915802","58A2"],["915801","58A1"],["915402","54A2"],["919405","94C1"],
+["919401","94A1"],["919206","92C2"],["918201","92A1"],["918302","83A3"],["917901","79A1"],["919407","94C2"],
+["919402","94A2"],["919301","93A1"],["919205","92C1"],["919001","90A"],["917902","79A2"],["917804","78C2"],
+["917802","78A2"],["917702","77A2"],["917602","76A2"],["917504","75A2"],["917401","74A"],["917806","78A2"],
+["917803","78C1"],["917801","78A1"],["917701","77A1"],["917601","76A1"],["917501","75A1"],["917301","73A1"],
+["917201","72A1"],["917103","71A2"],["917101","71A"],["916901","69A"],["916001","60A1"],["917303","73A2"],
+["917202","72A2"],["917104","71A3"],["917102","71A1"],["917005","70A1"],["916801","68A"]
+];
+
+let db = null, userCap = null, myId = null, myName = "";
+let selectedDate = todayStr();
+let dayType = "even";
+let pickedRoutes = [];  // routes chosen right now, about to be added
+let todayRoutes = [];   // routes already saved for selectedDate
+let currentTab = "mine";
+let unsubMine = null, unsubTeam = null;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function weekdayIsEven(dateStr) {
+  // Monday & Wednesday = even routes, per current schedule
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const wd = new Date(y, m-1, d).getDay(); // 0=Sun..6=Sat
+  return wd === 1 || wd === 3;
+}
+
+const expandedAreas = new Set();
+
+function areaColor(area, dt) {
+  dt = dt || dayType;
+  if (!area) return "#ffc9e1";
+  const name = area.split("/")[0];
+  const info = AREA_INFO[dt] && AREA_INFO[dt][name];
+  return info ? info.color : "#ffc9e1";
+}
+
+function renderRouteGrid() {
+  const list = getRouteList();
+  const q = (document.getElementById("routeSearch").value || "").trim().toLowerCase();
+  const box = document.getElementById("routeGrid");
+  box.innerHTML = "";
+  if (list.length === 0) {
+    box.innerHTML = '<div class="empty-note">No odd-day route list has been added yet. Ask to have it added, or switch to Even day.</div>';
+    return;
+  }
+  const filtered = q ? list.filter(r => r[0].includes(q) || r[1].toLowerCase().includes(q)) : list;
+  if (filtered.length === 0) {
+    box.innerHTML = '<div class="empty-note">No routes match "' + q.replace(/</g,"") + '"</div>';
+    return;
+  }
+  const areaList = currentAreaList();
+  areaList.concat([""]).forEach(area => {
+    const items = filtered.filter(r => (areaList.includes(r[2]) ? r[2] : "") === area);
+    if (!items.length) return;
+    const parts = area ? area.split("/") : [T("ungrouped"), ""];
+    const sec = document.createElement("div");
+    sec.className = "acc-section" + ((q || expandedAreas.has(area)) ? " open" : "");
+    const head = document.createElement("div");
+    head.className = "acc-head";
+    head.innerHTML = '<div><div class="acc-name"></div>' + (parts[1] ? '<div class="acc-num"></div>' : '') + '</div><span class="acc-arrow">\u203a</span>';
+    head.querySelector(".acc-name").textContent = parts[0];
+    if (parts[1]) head.querySelector(".acc-num").textContent = parts[1];
+    head.onclick = () => {
+      const open = sec.classList.toggle("open");
+      if (open) expandedAreas.add(area); else expandedAreas.delete(area);
+    };
+    const body = document.createElement("div");
+    body.className = "acc-body";
+    const color = areaColor(area);
+    items.forEach(r => {
+      const isPicked = pickedRoutes.some(s => s.code === r[0]);
+      const div = document.createElement("div");
+      div.className = "route-chip" + (isPicked ? " selected" : "");
+      div.style.setProperty("--sel", color);
+      div.innerHTML =
+        '<span class="rc-name">' + (r[1] || "—") + '</span>' +
+        '<span class="rc-code">' + r[0] + '</span>';
+      div.onclick = () => { togglePicked([r[0], r[1]]); div.classList.toggle("selected"); };
+      body.appendChild(div);
+    });
+    sec.appendChild(head);
+    sec.appendChild(body);
+    box.appendChild(sec);
+  });
+}
+
+function togglePicked(r) {
+  const idx = pickedRoutes.findIndex(s => s.code === r[0]);
+  if (idx >= 0) pickedRoutes.splice(idx, 1);
+  else pickedRoutes.push({code: r[0], label: r[1]});
+  updateAddButtonState();
+}
+
+function updateAddButtonState() {
+  document.getElementById("submitBtn").style.opacity = pickedRoutes.length === 0 ? "0.5" : "1";
+}
+
+function setDayType(t, isAuto, keepPicks) {
+  dayType = t;
+  document.getElementById("dayCountLabel").textContent = t === "odd" ? T("oddNumbers") : T("evenNumbers");
+  document.getElementById("dotA").classList.add("lit");
+  document.getElementById("dotB").classList.toggle("lit", t === "even");
+  if (!keepPicks) { document.getElementById("routeSearch").value = ""; pickedRoutes = []; }
+  populateAreaOptions();
+  renderRouteGrid();
+  updateAddButtonState();
+}
+
+async function onDateChange() {
+  selectedDate = document.getElementById("dateInput").value || todayStr();
+  pickedRoutes = [];
+  todayRoutes = [];
+  renderTodayTags();
+  const auto = weekdayIsEven(selectedDate) ? "even" : "odd";
+  await loadTodayRoutes();
+  setDayType(todayRoutes.length ? currentDocDayType || auto : auto, !todayRoutes.length);
+}
+
+let currentDocDayType = null;
+
+async function loadTodayRoutes() {
+  const before = todayRoutes.slice();
+  currentDocDayType = null;
+  if (!db || !myId) { renderTodayTags(); return; }
+  try {
+    const snap = await withTimeout(db.doc("submissions/" + myId + "_" + selectedDate).get(), 10000);
+    if (snap.exists) {
+      const data = snap.data();
+      const saved = data.routes || [];
+      const merged = saved.slice();
+      todayRoutes.forEach(r => { if (!merged.some(x => x.code === r.code)) merged.push(r); });
+      todayRoutes = merged;
+      currentDocDayType = data.dayType || null;
+    }
+  } catch (e) {}
+  renderTodayTags();
+}
+
+function findAreaForCode(code, dt) {
+  const item = getRouteList(dt).find(r => r[0] === code);
+  return item ? item[2] : "";
+}
+
+function renderTodayTags() {
+  const wrap = document.getElementById("todayTags");
+  wrap.innerHTML = "";
+  if (todayRoutes.length === 0) {
+    wrap.innerHTML = '<span style="color:var(--text-muted); font-size:13px;">No routes added yet for this day</span>';
+    return;
+  }
+  todayRoutes.forEach(r => {
+    const area = findAreaForCode(r.code);
+    const color = areaColor(area);
+    const tag = document.createElement("div");
+    tag.className = "done-chip";
+    tag.style.setProperty("--sel", color);
+    tag.innerHTML =
+      '<button class="done-x" aria-label="Remove">&times;</button>' +
+      '<span class="rc-name">' + (r.label || "—") + '</span>' +
+      '<span class="rc-code">' + r.code + '</span>';
+    tag.querySelector(".done-x").onclick = (e) => { e.stopPropagation(); askRemove(r); };
+    wrap.appendChild(tag);
+  });
+}
+
+let pendingRemoveCode = null;
+function askRemove(r) {
+  pendingRemoveCode = r.code;
+  document.getElementById("confirmText").textContent = T("removeText").replace("{code}", r.code + (r.label ? " / " + r.label : ""));
+  document.getElementById("confirmOverlay").classList.add("open");
+}
+function closeConfirm() {
+  pendingRemoveCode = null;
+  document.getElementById("confirmOverlay").classList.remove("open");
+}
+function confirmRemove() {
+  const code = pendingRemoveCode;
+  closeConfirm();
+  if (code) removeTodayRoute(code);
+}
+const BURGER_SVG = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg>';
+const LOGO_ICON = '<img class="logo-img-small" src="data:image/png;base64,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" alt="Menu">';
+
+function setMenuBtnIcon(open) {
+  document.getElementById("menuBtn").innerHTML = open ? LOGO_ICON : BURGER_SVG;
+}
+function openMenu() { document.getElementById("menuOverlay").classList.add("open"); setMenuBtnIcon(true); }
+function closeMenu() { document.getElementById("menuOverlay").classList.remove("open"); setMenuBtnIcon(false); }
+function toggleMenu() {
+  const isOpen = document.getElementById("menuOverlay").classList.contains("open");
+  if (isOpen) closeMenu(); else openMenu();
+}
+function openAccountFromMenu() { closeMenu(); openAccountPanel(); }
+function openHistory() { closeMenu(); document.getElementById("historyOverlay").classList.add("open"); }
+function closeHistory() { document.getElementById("historyOverlay").classList.remove("open"); }
+
+async function removeTodayRoute(code) {
+  todayRoutes = todayRoutes.filter(r => r.code !== code);
+  renderTodayTags();
+  await saveTodayRoutes();
+}
+
+let saveInFlight = false, savePending = false;
+
+function withTimeout(p, ms) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+}
+
+async function saveTodayRoutes() {
+  if (!db || !myId) return;
+  if (saveInFlight) { savePending = true; return; }
+  saveInFlight = true;
+  const statusEl = document.getElementById("statusMsg");
+  try {
+    do {
+      savePending = false;
+      const date = selectedDate, routes = todayRoutes.slice(), dt = dayType;
+      const ref = db.doc("submissions/" + myId + "_" + date);
+      if (routes.length === 0) {
+        await withTimeout(ref.delete(), 20000);
+      } else {
+        await withTimeout(ref.set({ userId: myId, date: date, dayType: dt, routes: routes, submittedAt: Date.now() }), 20000);
+      }
+    } while (savePending);
+  } catch (e) {
+    statusEl.textContent = T("genericError");
+    statusEl.className = "status-msg err";
+  }
+  saveInFlight = false;
+}
+
+function addRouteToDay() {
+  const statusEl = document.getElementById("statusMsg");
+  statusEl.textContent = "";
+  statusEl.className = "status-msg";
+  if (pickedRoutes.length === 0) {
+    statusEl.textContent = T("pickFirst");
+    statusEl.className = "status-msg err";
+    return;
+  }
+  if (!db || !myId) {
+    statusEl.textContent = T("noStorage");
+    statusEl.className = "status-msg err";
+    return;
+  }
+  let addedCount = 0;
+  pickedRoutes.forEach(r => {
+    if (!todayRoutes.some(x => x.code === r.code)) { todayRoutes.push({ code: r.code, label: r.label }); addedCount++; }
+  });
+  pickedRoutes = [];
+  document.getElementById("routeSearch").value = "";
+  renderTodayTags();
+  renderRouteGrid();
+  updateAddButtonState();
+  statusEl.textContent = addedCount > 0 ? T("addedPick") : T("alreadyAdded");
+  statusEl.classList.add(addedCount > 0 ? "ok" : "err");
+  if (addedCount > 0) saveTodayRoutes();
+}
+
+function fmtDate(dateStr) {
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  return dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+function renderHistory(docs) {
+  const el = document.getElementById("historyList");
+  if (!docs.length) {
+    el.innerHTML = '<div class="empty-note">No submissions yet.</div>';
+    return;
+  }
+  docs.sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = "";
+  docs.slice(0, 30).forEach(d => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    const routesHtml = (d.routes || []).map(r => {
+      const color = areaColor(findAreaForCode(r.code, d.dayType), d.dayType);
+      return '<div class="history-chip" style="--sel:' + color + '">' +
+        '<span class="rc-name">' + (r.label || "—") + '</span>' +
+        '<span class="rc-code">' + r.code + '</span></div>';
+    }).join("");
+    item.innerHTML =
+      '<div class="history-date">' + fmtDate(d.date) +
+      '<span class="history-daytype ' + d.dayType + '">' + d.dayType + '</span></div>' +
+      '<div class="history-routes">' + routesHtml + '</div>';
+    el.appendChild(item);
+  });
+}
+
+async function renderTeamList(docs) {
+  const el = document.getElementById("teamList");
+  const countEl = document.getElementById("teamCount");
+  countEl.textContent = docs.length + " submitted";
+  if (!docs.length) {
+    el.innerHTML = '<div class="empty-note">No one has submitted for this day yet.</div>';
+    return;
+  }
+  const ids = docs.map(d => d.userId);
+  let profiles = {};
+  try {
+    if (userCap) profiles = await userCap.profiles(ids);
+  } catch (e) {}
+  docs.sort((a,b) => (profiles[a.userId] && profiles[a.userId].name || "").localeCompare(profiles[b.userId] && profiles[b.userId].name || ""));
+  el.innerHTML = "";
+  docs.forEach(d => {
+    const name = (profiles[d.userId] && profiles[d.userId].name) || "Someone";
+    const time = d.submittedAt ? new Date(d.submittedAt).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"}) : "";
+    const routesHtml = (d.routes || []).map(r => {
+      const color = areaColor(findAreaForCode(r.code, d.dayType), d.dayType);
+      return '<div class="history-chip" style="--sel:' + color + '">' +
+        '<span class="rc-name">' + (r.label || "—") + '</span>' +
+        '<span class="rc-code">' + r.code + '</span></div>';
+    }).join("");
+    const card = document.createElement("div");
+    card.className = "emp-card";
+    card.innerHTML =
+      '<div class="row" style="justify-content:space-between;">' +
+        '<span class="emp-name"></span>' +
+        '<span class="emp-time">' + time + '<span class="history-daytype ' + d.dayType + '" style="margin-left:6px;">' + d.dayType + '</span></span>' +
+      '</div>' +
+      '<div class="history-routes" style="margin-top:6px;">' + routesHtml + '</div>';
+    card.querySelector(".emp-name").textContent = name;
+    el.appendChild(card);
+  });
+}
+
+function toggleViewTab() { switchTab(currentTab === "mine" ? "team" : "mine"); }
+function toggleDayType() { setDayType(dayType === "even" ? "odd" : "even"); }
+
+function updateViewToggle() {
+  document.getElementById("viewLabel").textContent = currentTab === "mine" ? T("tabMine") : T("tabTeam");
+  document.getElementById("viewIcon").classList.toggle("team", currentTab === "team");
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  updateViewToggle();
+  document.getElementById("viewMine").style.display = tab === "mine" ? "block" : "none";
+  document.getElementById("viewTeam").style.display = tab === "team" ? "block" : "none";
+}
+
+function subscribeMine() {
+  if (!db || !myId) return;
+  if (unsubMine) unsubMine();
+  unsubMine = db.collection("submissions").where("userId", "==", myId).limit(60).onSnapshot(
+    snap => {
+      const docs = snap.docs ? snap.docs.map(d => d.data()) : [];
+      renderHistory(docs);
+    },
+    err => { document.getElementById("historyList").innerHTML = '<div class="empty-note">Couldn\'t load history.</div>'; }
+  );
+}
+
+function subscribeTeam() {
+  if (!db) return;
+  const dateEl = document.getElementById("teamDateInput");
+  const date = dateEl.value || todayStr();
+  if (unsubTeam) unsubTeam();
+  document.getElementById("teamList").innerHTML = '<div class="spinner-note">Loading...</div>';
+  unsubTeam = db.collection("submissions").where("date", "==", date).limit(200).onSnapshot(
+    snap => {
+      const docs = snap.docs ? snap.docs.map(d => d.data()) : [];
+      renderTeamList(docs);
+    },
+    err => { document.getElementById("teamList").innerHTML = '<div class="empty-note">Couldn\'t load team data.</div>'; }
+  );
+}
+
+async function init() {
+  document.getElementById("dateInput").value = selectedDate;
+  document.getElementById("teamDateInput").value = todayStr();
+  document.getElementById("dateInput").onchange = onDateChange;
+  document.getElementById("teamDateInput").onchange = subscribeTeam;
+
+  try {
+    db = await claude.use("db");
+  } catch(e) { db = null; }
+  try {
+    userCap = await claude.use("user");
+  } catch(e) { userCap = null; }
+
+  if (userCap) {
+    try {
+      const me = await userCap.me();
+      myId = me.id;
+      myName = me.name || "";
+    } catch(e) {}
+  }
+
+  if (!db) {
+    document.getElementById("historyList").innerHTML = '<div class="empty-note">Storage isn\'t available in this view.</div>';
+    document.getElementById("teamList").innerHTML = '<div class="empty-note">Storage isn\'t available in this view.</div>';
+  }
+  if (!myId) {
+    document.getElementById("statusMsg").textContent = "Sign in to add routes.";
+  }
+
+  initAccountAndLanguage();
+  setMenuBtnIcon(false);
+  updateViewToggle();
+  setDayType(weekdayIsEven(selectedDate) ? "even" : "odd", true);
+  subscribeCustom();
+  subscribeMine();
+  subscribeTeam();
+  await loadTodayRoutes();
+  if (currentDocDayType && currentDocDayType !== dayType) setDayType(currentDocDayType, false, true);
+  updateAddButtonState();
+}
+
+// ---------- Shared custom routes ----------
+let customRoutes = []; // [{code,label,dayType}]
+let unsubCustom = null;
+
+const AREA_NAMES = ["Kytkintie", "Kirvesmiehinkatu", "Koivuvaaran terminaali", "Tiistinniityntie", "Tulkintie", "Kaisaniemi"];
+const AREA_INFO = {
+  even: {
+    "Kytkintie": { num: "4000", color: "#ffc9e1" },
+    "Kirvesmiehinkatu": { num: "2200", color: "#F57C00" },
+    "Koivuvaaran terminaali": { num: "2900", color: "#ffc9e1" },
+    "Tiistinniityntie": { num: "6000", color: "#ffc9e1" },
+    "Tulkintie": { num: "23", color: "#92e8b0" },
+    "Kaisaniemi": { num: "20", color: "#F57C00" }
+  },
+  odd: {
+    "Kytkintie": { num: "5000", color: "#e3db8f" },
+    "Kirvesmiehinkatu": { num: "1200", color: "#c7efff" },
+    "Koivuvaaran terminaali": { num: "1900", color: "#e3db8f" },
+    "Tiistinniityntie": { num: "7000", color: "#bdaf97" },
+    "Tulkintie": { num: "13", color: "#f2c7ff" },
+    "Kaisaniemi": { num: "10", color: "#ffc9e1" }
+  }
+};
+function areaFullName(name, dt) { return name + "/" + AREA_INFO[dt][name].num; }
+function currentAreaList(dt) { return AREA_NAMES.map(n => areaFullName(n, dt || dayType)); }
+function populateAreaOptions() {
+  const sel = document.getElementById("manualArea");
+  if (!sel) return;
+  const prev = sel.value;
+  const opts = ['<option value="">' + T("areaPh") + '</option>']
+    .concat(currentAreaList().map(a => '<option value="' + a + '">' + a + '</option>'))
+    .concat(['<option value="ungrouped">' + T("ungrouped") + '</option>']);
+  sel.innerHTML = opts.join("");
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function getRouteList(dt) {
+  dt = dt || dayType;
+  const base = dt === "even" ? EVEN_ROUTES : ODD_ROUTES;
+  const custom = customRoutes.filter(r => r.dayType === dt);
+  const byCode = {};
+  custom.forEach(r => { byCode[r.code] = r; });
+  const codes = new Set(base.map(r => r[0]));
+  const out = base.map(r => [r[0], (byCode[r[0]] && byCode[r[0]].label) || r[1], (byCode[r[0]] && byCode[r[0]].area) || ""]);
+  custom.filter(r => !codes.has(r.code))
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .forEach(r => out.push([r.code, r.label || "", r.area || ""]));
+  return out;
+}
+
+let kirvesMigrationDone = false;
+async function migrateKirvesArea() {
+  if (kirvesMigrationDone || !db) return;
+  kirvesMigrationDone = true;
+  const stale = customRoutes.filter(r => r.area && r.area.indexOf("Kirvermirhenkatu") === 0);
+  for (const r of stale) {
+    const newArea = r.area.replace("Kirvermirhenkatu", "Kirvesmiehinkatu");
+    try {
+      await db.doc("customRoutes/" + r.dayType + "_" + routeIdSafe(r.code)).set({
+        code: r.code, label: r.label, dayType: r.dayType, area: newArea,
+        addedBy: r.addedBy, addedAt: r.addedAt
+      });
+    } catch (e) {}
+  }
+}
+
+function subscribeCustom() {
+  if (!db) return;
+  if (unsubCustom) unsubCustom();
+  unsubCustom = db.collection("customRoutes").limit(500).onSnapshot(
+    snap => {
+      customRoutes = snap.docs ? snap.docs.map(d => d.data()) : [];
+      renderRouteGrid();
+      renderTodayTags();
+      migrateKirvesArea();
+    },
+    err => {}
+  );
+}
+
+function routeIdSafe(code) { return code.toLowerCase().replace(/[^a-z0-9]/g, "_"); }
+
+// ---------- Manual route ----------
+function toggleManual() {
+  const p = document.getElementById("manualPanel");
+  p.style.display = p.style.display === "none" ? "flex" : "none";
+}
+
+function findRouteAnywhere(code) {
+  const custom = {};
+  customRoutes.forEach(r => { custom[r.dayType + "|" + r.code] = r; });
+  const lists = [["even", EVEN_ROUTES], ["odd", ODD_ROUTES]];
+  for (const [dt, list] of lists) {
+    const hit = list.find(r => r[0] === code);
+    if (hit) {
+      const c = custom[dt + "|" + code];
+      return { dayType: dt, label: (c && c.label) || hit[1], area: (c && c.area) || "" };
+    }
+  }
+  const c = customRoutes.find(r => r.code === code);
+  return c ? { dayType: c.dayType, label: c.label || "", area: c.area || "" } : null;
+}
+
+function onManualCodeInput() {
+  const code = (document.getElementById("manualCode").value || "").trim();
+  const hint = document.getElementById("manualHint");
+  const found = code ? findRouteAnywhere(code) : null;
+  if (!found) { hint.textContent = ""; return; }
+  hint.textContent = T("routeExists") + ": " + (found.label || code) + " — " + (found.area || T("ungrouped")) + ". " + T("pickToUpdate");
+  const nameEl = document.getElementById("manualName");
+  if (!nameEl.value) nameEl.value = found.label;
+  document.getElementById("manualArea").value = found.area || "";
+}
+
+async function addManualRoute() {
+  const statusEl = document.getElementById("statusMsg");
+  statusEl.textContent = "";
+  statusEl.className = "status-msg";
+  const code = (document.getElementById("manualCode").value || "").trim();
+  let label = (document.getElementById("manualName").value || "").trim();
+  const areaVal = document.getElementById("manualArea").value;
+  if (!code) { statusEl.textContent = T("enterRouteNumber"); statusEl.classList.add("err"); return; }
+  if (!areaVal) { statusEl.textContent = T("chooseArea"); statusEl.classList.add("err"); return; }
+  if (!db || !myId) { statusEl.textContent = T("noStorage"); statusEl.classList.add("err"); return; }
+  const area = areaVal === "ungrouped" ? "" : areaVal;
+  const existing = findRouteAnywhere(code);
+  if (existing && !label) label = existing.label;
+  const docDay = existing ? existing.dayType : dayType;
+  try {
+    await db.doc("customRoutes/" + docDay + "_" + routeIdSafe(code)).set({
+      code: code, label: label, dayType: docDay, area: area, addedBy: myId, addedAt: Date.now()
+    });
+  } catch (e) {}
+  if (!todayRoutes.some(r => r.code === code)) {
+    todayRoutes.push({ code: code, label: label, manual: true });
+    await saveTodayRoutes();
+    renderTodayTags();
+  }
+  document.getElementById("manualCode").value = "";
+  document.getElementById("manualName").value = "";
+  document.getElementById("manualArea").value = "";
+  document.getElementById("manualPanel").style.display = "none";
+  document.getElementById("manualHint").textContent = "";
+  statusEl.textContent = existing ? T("updatedRoute") : T("addedManual");
+  statusEl.classList.add("ok");
+}
+
+// ---------- Statistics (Excel export) ----------
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+function buildZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0, centralSize = 0;
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+    const local = new Uint8Array(30 + name.length), dv = new DataView(local.buffer);
+    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true); dv.setUint16(6, 0, true); dv.setUint16(8, 0, true);
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0x21, true); dv.setUint32(14, crc, true);
+    dv.setUint32(18, data.length, true); dv.setUint32(22, data.length, true);
+    dv.setUint16(26, name.length, true); dv.setUint16(28, 0, true); local.set(name, 30);
+    parts.push(local, data);
+    const cen = new Uint8Array(46 + name.length), cv = new DataView(cen.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true); cv.setUint16(12, 0, true); cv.setUint16(14, 0x21, true); cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, name.length, true);
+    cv.setUint32(42, offset, true); cen.set(name, 46);
+    central.push(cen); centralSize += cen.length; offset += local.length + data.length;
+  });
+  const end = new Uint8Array(22), ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true); ev.setUint32(16, offset, true);
+  const all = parts.concat(central, [end]);
+  const total = all.reduce((s, a) => s + a.length, 0), out = new Uint8Array(total);
+  let p = 0; all.forEach(a => { out.set(a, p); p += a.length; });
+  return out;
+}
+
+function xmlEsc(s) {
+  return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function colName(n) { let s = ""; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+
+function sheetXml(rows, widths, freezeCols, wrap) {
+  let sd = "";
+  rows.forEach((row, ri) => {
+    let cells = "";
+    row.forEach((v, ci) => {
+      if (v === null || v === undefined || v === "") return;
+      const ref = colName(ci) + (ri + 1);
+      if (typeof v === "number") cells += '<c r="' + ref + '"' + (ri === 0 ? ' s="1"' : '') + '><v>' + v + '</v></c>';
+      else cells += '<c r="' + ref + '" t="inlineStr" s="' + (ri === 0 ? 1 : (wrap ? 2 : 0)) + '"><is><t xml:space="preserve">' + xmlEsc(v) + '</t></is></c>';
+    });
+    sd += '<row r="' + (ri + 1) + '">' + cells + '</row>';
+  });
+  const pane = freezeCols
+    ? '<pane xSplit="' + freezeCols + '" ySplit="1" topLeftCell="' + colName(freezeCols) + '2" activePane="bottomRight" state="frozen"/>'
+    : '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>';
+  const cols = '<cols>' + widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join("") + '</cols>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">' + pane + '</sheetView></sheetViews>' + cols + '<sheetData>' + sd + '</sheetData></worksheet>';
+}
+
+function buildXlsx(sheets) {
+  const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const RNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const PR = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  const hdr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const files = [];
+  files.push({ name: "[Content_Types].xml", data: hdr + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' + sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("") + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' });
+  files.push({ name: "_rels/.rels", data: hdr + '<Relationships xmlns="' + PR + '"><Relationship Id="rId1" Type="' + RNS + '/officeDocument" Target="xl/workbook.xml"/></Relationships>' });
+  files.push({ name: "xl/workbook.xml", data: hdr + '<workbook xmlns="' + NS + '" xmlns:r="' + RNS + '"><sheets>' + sheets.map((s, i) => '<sheet name="' + xmlEsc(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join("") + '</sheets></workbook>' });
+  files.push({ name: "xl/_rels/workbook.xml.rels", data: hdr + '<Relationships xmlns="' + PR + '">' + sheets.map((s, i) => '<Relationship Id="rId' + (i + 1) + '" Type="' + RNS + '/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join("") + '<Relationship Id="rId' + (sheets.length + 1) + '" Type="' + RNS + '/styles" Target="styles.xml"/></Relationships>' });
+  files.push({ name: "xl/styles.xml", data: hdr + '<styleSheet xmlns="' + NS + '"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDDE6EC"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' });
+  sheets.forEach((s, i) => files.push({ name: "xl/worksheets/sheet" + (i + 1) + ".xml", data: sheetXml(s.rows, s.widths, s.freezeCols || 0, !!s.wrap) }));
+  return buildZip(files);
+}
+
+function addDaysIso(iso, n) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+async function fetchSubmissionsRange(from, to) {
+  const out = [];
+  let cur = from;
+  while (cur <= to) {
+    const end = addDaysIso(cur, 13) < to ? addDaysIso(cur, 13) : to;
+    const snap = await withTimeout(db.collection("submissions").where("date", ">=", cur).where("date", "<=", end).limit(1000).get(), 30000);
+    (snap.docs || []).forEach(d => out.push(d.data()));
+    cur = addDaysIso(end, 1);
+  }
+  return out;
+}
+
+function routeText(r) { return r.label ? r.label + " (" + r.code + ")" : String(r.code); }
+
+function openStats() {
+  closeMenu();
+  const f = document.getElementById("statsFrom"), t = document.getElementById("statsTo");
+  const today = todayStr();
+  if (!t.value) t.value = today;
+  if (!f.value) f.value = today.slice(0, 8) + "01";
+  document.getElementById("statsMsg").textContent = "";
+  document.getElementById("statsOverlay").classList.add("open");
+}
+function closeStats() { document.getElementById("statsOverlay").classList.remove("open"); }
+
+async function downloadStats() {
+  const msg = document.getElementById("statsMsg"), btn = document.getElementById("statsBtn");
+  const setMsg = (text, cls) => { msg.textContent = text; msg.className = "status-msg" + (cls ? " " + cls : ""); };
+  const from = document.getElementById("statsFrom").value, to = document.getElementById("statsTo").value;
+  if (!from || !to || from > to) { setMsg(T("statsBadRange"), "err"); return; }
+  if (addDaysIso(from, 366) < to) { setMsg(T("statsTooLong"), "err"); return; }
+  if (!db) { setMsg(T("noStorage"), "err"); return; }
+  btn.disabled = true;
+  setMsg(T("statsBuilding"));
+  try {
+    const downloads = await claude.use("downloads");
+    if (!downloads) { setMsg(T("statsUnavailable"), "err"); btn.disabled = false; return; }
+    const docs = await fetchSubmissionsRange(from, to);
+    const valid = docs.filter(d => d && d.userId && d.date && (d.routes || []).length);
+    if (!valid.length) { setMsg(T("statsNoData"), "err"); btn.disabled = false; return; }
+
+    let profiles = {};
+    try { if (userCap) profiles = await userCap.profiles(Array.from(new Set(valid.map(d => d.userId)))); } catch (e) {}
+    const nameOf = id => (profiles[id] && profiles[id].name) || T("statsUnknown");
+    const locale = currentLang === "fi" ? "fi-FI" : "en-US";
+    const weekday = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString(locale, { weekday: "long" }); };
+
+    valid.sort((a, b) => a.date.localeCompare(b.date) || nameOf(a.userId).localeCompare(nameOf(b.userId)));
+
+    const byDay = [[T("statsColDate"), T("statsColDay"), T("statsColPerson"), T("statsColNumbers"), T("statsColCount"), T("statsColRoutes")]];
+    valid.forEach(d => byDay.push([d.date, weekday(d.date), nameOf(d.userId), d.dayType === "odd" ? T("oddNumbers") : T("evenNumbers"), d.routes.length, d.routes.map(routeText).join(", ")]));
+
+    const dates = Array.from(new Set(valid.map(d => d.date))).sort();
+    const people = Array.from(new Set(valid.map(d => d.userId))).sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+    const matrix = [[T("statsColPerson")].concat(dates, [T("statsColDays"), T("statsColTotal")])];
+    people.forEach(pid => {
+      const row = [nameOf(pid)];
+      let days = 0, total = 0;
+      dates.forEach(dt => {
+        const d = valid.find(x => x.userId === pid && x.date === dt);
+        if (d) { row.push(d.routes.map(routeText).join(", ")); days++; total += d.routes.length; } else row.push("");
+      });
+      row.push(days, total);
+      matrix.push(row);
+    });
+
+    const bytes = buildXlsx([
+      { name: T("statsSheetByDay"), rows: byDay, widths: [12, 14, 24, 16, 14, 70], wrap: true },
+      { name: T("statsSheetPerPerson"), rows: matrix, widths: [24].concat(dates.map(() => 30), [12, 16]), freezeCols: 1, wrap: true }
+    ]);
+    const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    await downloads.save({ filename: "route-statistics_" + from + "_to_" + to + ".xlsx", data: blob });
+    setMsg(T("statsSaved"), "ok");
+  } catch (e) {
+    const code = e && e.code;
+    setMsg(code === "declined" ? T("statsDeclined") : (code === "unavailable" || code === "not_granted" || code === "extension_not_enabled") ? T("statsUnavailable") : T("genericError"), "err");
+  }
+  btn.disabled = false;
+}
+
+// ---------- Account (email login/signup) ----------
+let currentAccount = null; // {email}
+let accMode = "login";
+
+async function sha256Hex(str) {
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function emailToDocId(email) {
+  return email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+}
+
+function openAccountPanel() {
+  document.getElementById("accountOverlay").classList.add("open");
+}
+function closeAccountPanel() {
+  document.getElementById("accountOverlay").classList.remove("open");
+  document.getElementById("accStatusMsg").textContent = "";
+}
+function closeAccountPanelOnOverlay(e) {
+  if (e.target.id === "accountOverlay") closeAccountPanel();
+}
+
+function setAccMode(mode) {
+  accMode = mode;
+  document.getElementById("accTabLogin").classList.toggle("active", mode === "login");
+  document.getElementById("accTabSignup").classList.toggle("active", mode === "signup");
+  document.getElementById("accSubmitBtn").textContent = mode === "login" ? T("login") : T("createAccount");
+  document.getElementById("accStatusMsg").textContent = "";
+}
+
+async function submitAccountForm() {
+  const statusEl = document.getElementById("accStatusMsg");
+  statusEl.className = "status-msg";
+  statusEl.textContent = "";
+  const email = (document.getElementById("accEmail").value || "").trim();
+  const password = document.getElementById("accPassword").value || "";
+  if (!email || !password) {
+    statusEl.textContent = T("fillBoth");
+    statusEl.classList.add("err");
+    return;
+  }
+  if (!db) {
+    statusEl.textContent = T("noStorage");
+    statusEl.classList.add("err");
+    return;
+  }
+  const btn = document.getElementById("accSubmitBtn");
+  btn.disabled = true;
+  const docId = emailToDocId(email);
+  try {
+    const passwordHash = await sha256Hex(password);
+    const ref = db.doc("accounts/" + docId);
+    if (accMode === "signup") {
+      const existing = await ref.get();
+      if (existing.exists) {
+        statusEl.textContent = T("accountExists");
+        statusEl.classList.add("err");
+        btn.disabled = false;
+        return;
+      }
+      await ref.set({ email: email, passwordHash: passwordHash, createdAt: Date.now() });
+    } else {
+      const snap = await ref.get();
+      if (!snap.exists || snap.data().passwordHash !== passwordHash) {
+        statusEl.textContent = T("wrongCreds");
+        statusEl.classList.add("err");
+        btn.disabled = false;
+        return;
+      }
+    }
+    currentAccount = { email: email };
+    try { localStorage.setItem("routeTracker_account", JSON.stringify(currentAccount)); } catch(e) {}
+    renderAccountUI();
+    document.getElementById("accPassword").value = "";
+  } catch (e) {
+    statusEl.textContent = T("genericError");
+    statusEl.classList.add("err");
+  }
+  btn.disabled = false;
+}
+
+function logoutAccount() {
+  currentAccount = null;
+  try { localStorage.removeItem("routeTracker_account"); } catch(e) {}
+  renderAccountUI();
+}
+
+function renderAccountUI() {
+  const loggedOut = document.getElementById("loggedOutView");
+  const loggedIn = document.getElementById("loggedInView");
+  const menuAccount = document.getElementById("menuAccount");
+  if (currentAccount) {
+    loggedOut.style.display = "none";
+    loggedIn.style.display = "block";
+    document.getElementById("loggedInEmail").textContent = currentAccount.email;
+    document.getElementById("loggedInAvatar").textContent = currentAccount.email.charAt(0).toUpperCase();
+    if (menuAccount) menuAccount.textContent = currentAccount.email;
+  } else {
+    loggedOut.style.display = "block";
+    loggedIn.style.display = "none";
+    if (menuAccount) menuAccount.textContent = T("account");
+  }
+}
+
+// ---------- Language ----------
+let currentLang = "en";
+const STRINGS = {
+  en: {
+    tabMine: "My day", tabTeam: "Team view",
+    dateLabel: "Date", evenDay: "Even day", oddDay: "Odd day",
+    completedRoutesTitle: "Completed routes", searchPlaceholder: "Search route number or name...",
+    addRoute: "Add route", adding: "Adding...", todaysRoutes: "Today's routes",
+    recentHistory: "Recent history", filterByDay: "Filter by day",
+    login: "Log in", createAccount: "Create account", logOut: "Log out",
+    account: "Account", language: "Language",
+    statistics: "Statistics", statsFrom: "From", statsTo: "To", statsDownload: "Download Excel",
+    statsBadRange: "Choose a valid date range.", statsTooLong: "Choose a range of up to one year.", statsBuilding: "Building the Excel file...",
+    statsNoData: "No routes were recorded in that period.", statsSaved: "Excel file ready.", statsDeclined: "Download cancelled.",
+    statsUnavailable: "Downloads aren't available in this view.", statsUnknown: "Unknown",
+    statsColDate: "Date", statsColDay: "Day", statsColPerson: "Person", statsColNumbers: "Numbers", statsColCount: "Routes done", statsColRoutes: "Routes",
+    statsColDays: "Days worked", statsColTotal: "Total routes", statsSheetByDay: "Routes by day", statsSheetPerPerson: "Per person",
+    oddNumbers: "Odd numbers", evenNumbers: "Even numbers", fillBoth: "Enter both email and password.", noStorage: "Not connected yet — try again in a moment.",
+    accountExists: "An account with that email already exists.", wrongCreds: "Incorrect email or password.",
+    genericError: "Something went wrong. Try again.",
+    pickFirst: "Tap a route first, then press Add.", menu: "Menu", removeTitle: "Remove route?", removeText: "Remove {code} from today's routes?", cancel: "Cancel", remove: "Remove", addedPick: "Added. Pick your next route.", routeExists: "Already in system", pickToUpdate: "Choose an area to update it.", updatedRoute: "Route updated.", ungrouped: "Ungrouped", chooseArea: "Choose an area.", areaPh: "Choose area...", manualCodePh: "Route number", manualNamePh: "Route name (optional)", addCompleted: "Add as completed",
+    enterRouteNumber: "Enter a route number.", alreadyAdded: "Already on today's list.", addedManual: "Route added as completed."
+  },
+  fi: {
+    tabMine: "Oma päivä", tabTeam: "Tiiminäkymä",
+    dateLabel: "Päivämäärä", evenDay: "Parillinen päivä", oddDay: "Pariton päivä",
+    completedRoutesTitle: "Valmiit reitit", searchPlaceholder: "Hae reitin numeroa tai nimeä...",
+    addRoute: "Lisää reitti", adding: "Lisätään...", todaysRoutes: "Päivän reitit",
+    recentHistory: "Viimeisimmät merkinnät", filterByDay: "Suodata päivän mukaan",
+    login: "Kirjaudu sisään", createAccount: "Luo tili", logOut: "Kirjaudu ulos",
+    account: "Tili", language: "Kieli",
+    statistics: "Tilastot", statsFrom: "Alkaen", statsTo: "Päättyen", statsDownload: "Lataa Excel",
+    statsBadRange: "Valitse kelvollinen ajanjakso.", statsTooLong: "Valitse enintään vuoden ajanjakso.", statsBuilding: "Luodaan Excel-tiedostoa...",
+    statsNoData: "Valitulla ajanjaksolla ei ole merkittyjä reittejä.", statsSaved: "Excel-tiedosto valmis.", statsDeclined: "Lataus peruttu.",
+    statsUnavailable: "Lataus ei ole käytettävissä tässä näkymässä.", statsUnknown: "Tuntematon",
+    statsColDate: "Päivämäärä", statsColDay: "Viikonpäivä", statsColPerson: "Henkilö", statsColNumbers: "Numerot", statsColCount: "Reittejä", statsColRoutes: "Reitit",
+    statsColDays: "Työpäiviä", statsColTotal: "Reittejä yhteensä", statsSheetByDay: "Reitit päivittäin", statsSheetPerPerson: "Henkilöittäin",
+    oddNumbers: "Parittomat numerot", evenNumbers: "Parilliset numerot", fillBoth: "Täytä sähköposti ja salasana.", noStorage: "Ei yhteyttä — yritä hetken kuluttua uudelleen.",
+    accountExists: "Tällä sähköpostilla on jo tili.", wrongCreds: "Väärä sähköposti tai salasana.",
+    genericError: "Jokin meni pieleen. Yritä uudelleen.",
+    pickFirst: "Valitse ensin reitti ja paina Lisää.", menu: "Valikko", removeTitle: "Poistetaanko reitti?", removeText: "Poistetaanko {code} päivän reiteistä?", cancel: "Peruuta", remove: "Poista", addedPick: "Lisätty. Valitse seuraava reitti.", routeExists: "Jo järjestelmässä", pickToUpdate: "Valitse alue päivittääksesi.", updatedRoute: "Reitti päivitetty.", ungrouped: "Ryhmittelemättömät", chooseArea: "Valitse alue.", areaPh: "Valitse alue...", manualCodePh: "Reitin numero", manualNamePh: "Reitin nimi (valinnainen)", addCompleted: "Lisää suoritettuna",
+    enterRouteNumber: "Anna reitin numero.", alreadyAdded: "Jo päivän listalla.", addedManual: "Reitti lisätty suoritettuna."
+  }
+};
+function T(key) { return (STRINGS[currentLang] && STRINGS[currentLang][key]) || STRINGS.en[key] || key; }
+
+function setLanguage(lang) {
+  currentLang = lang;
+  try { localStorage.setItem("routeTracker_lang", lang); } catch(e) {}
+  document.getElementById("langEn").classList.toggle("active", lang === "en");
+  document.getElementById("langFi").classList.toggle("active", lang === "fi");
+  applyLanguage();
+}
+
+function applyLanguage() {
+  updateViewToggle();
+  document.querySelector('.date-box .dbx-label').textContent = T("dateLabel");
+  document.getElementById("dayCountLabel").textContent = dayType === "odd" ? T("oddNumbers") : T("evenNumbers");
+  document.getElementById("routeSearch").placeholder = T("searchPlaceholder");
+  document.getElementById("submitBtn").textContent = T("addRoute");
+  document.getElementById("manualCode").placeholder = T("manualCodePh");
+  document.getElementById("manualName").placeholder = T("manualNamePh");
+  document.getElementById("manualAddBtn").textContent = T("addCompleted");
+  populateAreaOptions();
+  const todayLabel = document.querySelector('.work-area label.field-label');
+  if (todayLabel) todayLabel.textContent = T("todaysRoutes");
+  document.getElementById("menuHistory").textContent = T("recentHistory");
+  document.getElementById("menuStats").textContent = T("statistics");
+  document.getElementById("statsTitle").textContent = T("statistics");
+  document.getElementById("statsFromLabel").textContent = T("statsFrom");
+  document.getElementById("statsToLabel").textContent = T("statsTo");
+  document.getElementById("statsBtn").textContent = T("statsDownload");
+  document.getElementById("historyTitle").textContent = T("recentHistory");
+  document.getElementById("confirmTitle").textContent = T("removeTitle");
+  document.getElementById("confirmCancel").textContent = T("cancel");
+  document.getElementById("confirmOk").textContent = T("remove");
+  const filterLabel = document.querySelector('[data-t="filterByDay"]');
+  if (filterLabel) filterLabel.textContent = T("filterByDay");
+  document.getElementById("accTabLogin").textContent = T("login");
+  document.getElementById("accTabSignup").textContent = T("createAccount");
+  document.getElementById("logoutBtn").textContent = T("logOut");
+  document.getElementById("accSubmitBtn").textContent = accMode === "login" ? T("login") : T("createAccount");
+  document.getElementById("modalTitle").textContent = T("account");
+  if (!currentAccount) { const ma = document.getElementById("menuAccount"); if (ma) ma.textContent = T("account"); }
+}
+
+function initAccountAndLanguage() {
+  try {
+    const savedLang = localStorage.getItem("routeTracker_lang");
+    if (savedLang) currentLang = savedLang;
+  } catch(e) {}
+  document.getElementById("langEn").classList.toggle("active", currentLang === "en");
+  document.getElementById("langFi").classList.toggle("active", currentLang === "fi");
+  applyLanguage();
+
+  try {
+    const saved = localStorage.getItem("routeTracker_account");
+    if (saved) currentAccount = JSON.parse(saved);
+  } catch(e) {}
+  renderAccountUI();
+}
+
+// ---------- Header: hide on scroll down, show on scroll up ----------
+(function () {
+  let lastY = window.scrollY || 0;
+  window.addEventListener("scroll", () => {
+    const hdr = document.getElementById("headerRow");
+    const btn = document.getElementById("menuBtn");
+    if (!hdr) return;
+    const y = window.scrollY || 0;
+    const setHidden = (v) => { hdr.classList.toggle("hidden", v); if (btn) btn.classList.toggle("hidden", v); };
+    if (y <= 10) setHidden(false);
+    else if (y > lastY + 6) setHidden(true);
+    else if (y < lastY - 6) setHidden(false);
+    lastY = y;
+  }, { passive: true });
+})();
+
+window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

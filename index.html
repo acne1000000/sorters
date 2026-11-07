@@ -437,14 +437,12 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // Supabase connection. The publishable key is designed for browser use;
 // database access is protected by the Row Level Security policies.
 const SUPABASE_URL = "https://pdbtmsjimjsmuipkoszo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cBTHQ8KJ3Sw5wJcRffYYdA_kE-qI-NS";
-// Fail clearly if the Supabase library did not load (for example, because
-// the CDN was blocked or the device is offline).
 let supabaseClient = null;
 let supabaseInitError = null;
 try {
@@ -519,8 +517,8 @@ const ODD_ROUTES = [
 let db = supabaseClient, myId = null, myName = "";
 let selectedDate = todayStr();
 let dayType = "even";
-let pickedRoutes = [];  // routes chosen right now, about to be added
-let todayRoutes = [];   // routes already saved for selectedDate
+let pickedRoutes = [];
+let todayRoutes = [];
 let currentTab = "mine";
 let unsubMine = null, unsubTeam = null;
 
@@ -530,9 +528,8 @@ function todayStr() {
 }
 
 function weekdayIsEven(dateStr) {
-  // Monday & Wednesday = even routes, per current schedule
   const [y,m,d] = dateStr.split("-").map(Number);
-  const wd = new Date(y, m-1, d).getDay(); // 0=Sun..6=Sat
+  const wd = new Date(y, m-1, d).getDay();
   return wd === 1 || wd === 3;
 }
 
@@ -923,11 +920,13 @@ async function startAppForUser(user) {
   const prompt = document.getElementById("signInPrompt");
   if (prompt) prompt.style.display = user ? "none" : "block";
 
+  // Area assignments are public data — keep them subscribed even when signed out.
+  subscribeCustom();
+
   if (!user) {
     if (unsubMine) db.removeChannel(unsubMine);
     if (unsubTeam) db.removeChannel(unsubTeam);
-    if (unsubCustom) db.removeChannel(unsubCustom);
-    unsubMine = unsubTeam = unsubCustom = null;
+    unsubMine = unsubTeam = null;
     document.getElementById("historyList").innerHTML = '<div class="empty-note">Sign in to view your history.</div>';
     document.getElementById("teamList").innerHTML = '<div class="empty-note">Sign in to view team submissions.</div>';
     document.getElementById("statusMsg").textContent = "";
@@ -935,7 +934,6 @@ async function startAppForUser(user) {
     return;
   }
   document.getElementById("statusMsg").textContent = "";
-  subscribeCustom();
   subscribeMine();
   subscribeTeam();
   await loadTodayRoutes();
@@ -973,8 +971,106 @@ async function init() {
 }
 
 // ---------- Shared custom routes ----------
-let customRoutes = []; // [{code,label,dayType}]
+
+// Route -> street (area) assignments. Kept in the file so the app works
+// even when Supabase is unreachable, and used as the seed source.
+const AREA_ASSIGNMENTS = {
+  even: {
+    "Kytkintie/4000": [
+      ["916002","60B1"],["917003","70B1"],["917107","71B2"],["917109","71B4"],
+      ["917502","75B2"],["917503","75B1"],["917904","79B2"],["919002","90B"],
+      ["919101","91D"],["919203","92B1"],["919403","94B1"],["919406","94D1"],
+      ["919706","97B3"],["922001","120A"],["922806","128B3"]
+    ],
+    "Kirvesmiehinkatu/2200": [
+      ["911403","14B1"],["915403","54B1"],["915702","57B1"],["915803","58B1"],
+      ["915902","59B1"],["918005","80B2"],["918006","80B3"],["918502","85B1"],
+      ["918802","88B"],["918806","98C3"],["919803","98B1"],["919806","98C3"],
+      ["919808","98D2"],["919903","99B1"]
+    ],
+    "Koivuvaaran terminaali/1900": [["914402","44B"]],
+    "Koivuvaaran terminaali/2900": [
+      ["496004","260B2"],["496101","261A"],["496506","265B3"],["496601","266A1"],
+      ["496602","266B1"],["497303","273B1"],["499402","294B1"],["913902","39B1"],
+      ["914102","41B1"],["914403","44C"]
+    ],
+    "Tiistinniityntie/6000": [
+      ["491005","210B3"],["491007","210D1"],["491302","213B"],["491702","217B1"],
+      ["492306","223C2"],["492307","223D1"],["492308","223D2"],["492309","223C3"],
+      ["493202","232A2"],["493302","233B2"],["493303","233B3"],["497004","270B2"],
+      ["497605","276B1"],["497607","276B3"],["497703","277B1"],["497804","278B2"],
+      ["499405","294C"]
+    ],
+    "Tulkintie/23": [
+      ["912403","24B1"],["912404","24B2"],["912802","28B1"],["913002","30B1"],
+      ["913204","32B2"],["913206","32B3"],["914207","42B2"],["914301","43A1"],
+      ["914302","43A2"],["916103","61B1"],["916402","64B"],["916602","66B2"],
+      ["916703","67B"],["923007","130B1"],["923010","130B4"],["923012","130B6"],
+      ["923504","135B2"],["923801","138A"],["924503","145B1"],["925104","151B2"]
+    ],
+    "Kaisaniemi/20": [
+      ["911006","10B1"],["911008","10B3"],["911704","17B2"],["911805","18B1"],
+      ["911806","18B2"],["912006","20B2"],["912103","21B1"],["912504","25B1"],
+      ["912505","25B2"],["912507","25B4"]
+    ]
+  },
+  odd: {
+    "Kytkintie/5000": [
+      ["916801","68A"],["917101","71A"],["917201","72A1"],["917202","72A2"],
+      ["917301","73A1"],["917303","73A2"],["917401","74A"],["917602","76A2"],
+      ["917701","77A1"],["917802","78A2"],["917803","78C1"],["917806","78A3"],
+      ["918302","83A3"],["919001","90A"],["919205","92C1"],["919206","92C2"],
+      ["919301","93A1"],["919502","95A1"],["919701","97A1"],["919702","97A2"],
+      ["922002","120B"]
+    ],
+    "Kirvesmiehinkatu/1200": [
+      ["915401","54A1"],["915701","57A1"],["915901","59A1"],["918101","81A1"],
+      ["918301","83A1"],["918303","83A2"],["918401","84A1"],["919601","96A1"],
+      ["919602","96A2"],["919603","96A3"],["919801","98A1"]
+    ],
+    "Koivuvaaran terminaali/1900": [
+      ["496001","260A1"],["496003","260A2"],["496005","260C"],["496202","262B"],
+      ["497101","271A"],["497102","271B"],["499403","294A2"],["914401","44A"],
+      ["926007","160C2"],["926010","160B3"],["926205","162A3"]
+    ],
+    "Tiistinniityntie/7000": [
+      ["491501","215A1"],["491802","218B"],["491803","218C"],["492102","221B"],
+      ["492204","220B2"],["492205","220C1"],["492502","225A2"],["492602","226A2"],
+      ["493001","230A1"],["493002","230A2"],["493003","230A3"],["493004","230C"],
+      ["493208","232C2"],["493304","233A"],["496103","261C"],["497005","270A3"],
+      ["497701","277A1"],["497702","277A2"]
+    ],
+    "Tulkintie/13": [
+      ["912801","28A1"],["914203","42C1"],["914206","42C2"],["916501","65A"],
+      ["923001","130A1"],["923002","130A2"],["923003","130A3"],["923802","138B"],
+      ["923901","139A1"],["923902","139A2"],["924001","140A1"],["924505","145A3"]
+    ],
+    "Kaisaniemi/10": [
+      ["911002","10A2"],["911004","10A4"],["911701","17A1"],["912002","20A2"],
+      ["912003","20A3"],["912102","21A2"],["912501","25A1"]
+    ]
+  }
+};
+
+// Flatten once into the shape the app uses in memory.
+const DEFAULT_CUSTOM_ROUTES = (() => {
+  const out = [];
+  Object.keys(AREA_ASSIGNMENTS).forEach(dt => {
+    Object.keys(AREA_ASSIGNMENTS[dt]).forEach(area => {
+      AREA_ASSIGNMENTS[dt][area].forEach(([code, label]) => {
+        out.push({ code, label, dayType: dt, area, addedBy: "seed", addedAt: 0 });
+      });
+    });
+  });
+  return out;
+})();
+
+// Live, in-memory assignments. Starts as the built-in snapshot so the first
+// render has data; subscribeCustom() then swaps in whatever Supabase has,
+// and keeps it in sync in real time.
+let customRoutes = DEFAULT_CUSTOM_ROUTES.slice();
 let unsubCustom = null;
+let customReconnectTimer = null;
 
 const AREA_NAMES = ["Kytkintie", "Kirvesmiehinkatu", "Koivuvaaran terminaali", "Tiistinniityntie", "Tulkintie", "Kaisaniemi"];
 const AREA_INFO = {
@@ -1022,42 +1118,148 @@ function getRouteList(dt) {
   return out;
 }
 
-let kirvesMigrationDone = false;
-async function migrateKirvesArea() {
-  if (kirvesMigrationDone || !db || !myId) return;
-  kirvesMigrationDone = true;
-  const stale = customRoutes.filter(r => r.area && r.area.indexOf("Kirvermirhenkatu") === 0);
-  for (const r of stale) {
-    const newArea = r.area.replace("Kirvermirhenkatu", "Kirvesmiehinkatu");
-    try {
-      await db.from("custom_routes").update({ area: newArea }).eq("code", r.code).eq("day_type", r.dayType);
-    } catch (e) { console.error(e); }
+function mapRowToCustom(row) {
+  return {
+    code:     row.code,
+    label:    row.label || "",
+    dayType:  row.day_type,
+    area:     row.area || "",
+    addedBy:  row.added_by || "",
+    addedAt:  row.added_at || 0
+  };
+}
+
+async function fetchAllCustomRoutes() {
+  // Page through the table so >1000 rows are handled.
+  const PAGE = 1000;
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await db
+      .from("custom_routes")
+      .select("day_type,code,label,area,added_by,added_at")
+      .order("day_type", { ascending: true })
+      .order("code", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const page = data || [];
+    out.push(...page);
+    if (page.length < PAGE) break;
+    from += PAGE;
   }
+  return out;
 }
 
 async function refreshCustomRoutes() {
-  if (!db || !myId) return;
-  const { data, error } = await db.from("custom_routes").select("*").limit(500);
-  if (error) { console.error("Could not load custom routes:", error); return; }
-  customRoutes = (data || []).map(r => ({
-    code: r.code, label: r.label || "", dayType: r.day_type, area: r.area || "",
-    addedBy: r.added_by, addedAt: r.added_at
-  }));
+  if (!db) return;
+  try {
+    const rows = await fetchAllCustomRoutes();
+    // Only replace when the table actually has rows; otherwise keep the
+    // built-in defaults so a fresh, unseeded project still shows areas.
+    if (rows.length > 0) {
+      customRoutes = rows.map(mapRowToCustom);
+    }
+  } catch (e) {
+    console.error("Could not load custom routes from Supabase; using built-in data:", e);
+  }
   renderRouteGrid();
   renderTodayTags();
-  migrateKirvesArea();
 }
 
 function subscribeCustom() {
-  if (!db || !myId) return;
-  if (unsubCustom) db.removeChannel(unsubCustom);
+  if (!db) return;
+
+  // Tear down any previous channel / pending reconnect.
+  if (unsubCustom) { try { db.removeChannel(unsubCustom); } catch (e) {} unsubCustom = null; }
+  if (customReconnectTimer) { clearTimeout(customReconnectTimer); customReconnectTimer = null; }
+
+  // Initial pull (with paging).
   refreshCustomRoutes();
-  unsubCustom = db.channel("shared-custom-routes")
-    .on("postgres_changes", { event: "*", schema: "public", table: "custom_routes" }, () => refreshCustomRoutes())
-    .subscribe();
+
+  const channel = db
+    .channel("shared-custom-routes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "custom_routes" },
+      (payload) => {
+        try {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old || {};
+            customRoutes = customRoutes.filter(
+              r => !(r.dayType === old.day_type && r.code === old.code)
+            );
+          } else {
+            const row = payload.new;
+            if (!row) return;
+            const entry = mapRowToCustom(row);
+            const idx = customRoutes.findIndex(
+              r => r.dayType === entry.dayType && r.code === entry.code
+            );
+            if (idx >= 0) customRoutes[idx] = entry;
+            else customRoutes.push(entry);
+          }
+          renderRouteGrid();
+          renderTodayTags();
+        } catch (e) {
+          console.error("Realtime custom_routes handler failed:", e);
+        }
+      }
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        // Re-fetch on (re)connect to reconcile anything we missed offline.
+        refreshCustomRoutes();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn("Realtime custom_routes channel status:", status);
+        if (!customReconnectTimer) {
+          customReconnectTimer = setTimeout(() => {
+            customReconnectTimer = null;
+            subscribeCustom();
+          }, 5000);
+        }
+      }
+    });
+
+  unsubCustom = channel;
 }
 
-function routeIdSafe(code) { return code.toLowerCase().replace(/[^a-z0-9]/g, "_"); }
+// Upsert one (dayType, code) assignment. Applies locally first for instant UI.
+async function saveRouteArea(dayType, code, label, area) {
+  const entry = {
+    code,
+    label:    label || "",
+    dayType,
+    area:     area || "",
+    addedBy:  (currentAccount && currentAccount.email) || myName || "anonymous",
+    addedAt:  Date.now()
+  };
+
+  // Optimistic local update.
+  const idx = customRoutes.findIndex(r => r.dayType === dayType && r.code === code);
+  if (idx >= 0) customRoutes[idx] = { ...customRoutes[idx], ...entry };
+  else customRoutes.push(entry);
+  renderRouteGrid();
+  renderTodayTags();
+
+  if (!db) return;
+  try {
+    const { error } = await db.from("custom_routes").upsert(
+      {
+        day_type: dayType,
+        code,
+        label:    entry.label,
+        area:     entry.area,
+        added_by: entry.addedBy,
+        added_at: entry.addedAt
+      },
+      { onConflict: "day_type,code" }
+    );
+    if (error) throw error;
+  } catch (e) {
+    console.error("Could not save route area to Supabase:", e);
+    refreshCustomRoutes();
+  }
+}
 
 // ---------- Manual route ----------
 function toggleManual() {
@@ -1105,12 +1307,9 @@ async function addManualRoute() {
   const existing = findRouteAnywhere(code);
   if (existing && !label) label = existing.label;
   const docDay = existing ? existing.dayType : dayType;
-  try {
-    const { error } = await db.from("custom_routes").upsert({
-      code: code, label: label, day_type: docDay, area: area, added_by: myId
-    }, { onConflict: "code,day_type" });
-    if (error) throw error;
-  } catch (e) {}
+
+  await saveRouteArea(docDay, code, label, area);
+
   if (!todayRoutes.some(r => r.code === code)) {
     todayRoutes.push({ code: code, label: label, manual: true });
     await saveTodayRoutes();
@@ -1301,7 +1500,7 @@ async function downloadStats() {
 }
 
 // ---------- Account (Supabase email authentication) ----------
-let currentAccount = null; // {email}
+let currentAccount = null;
 let accMode = "login";
 
 function openAccountPanel() { document.getElementById("accountOverlay").classList.add("open"); }
@@ -1483,8 +1682,7 @@ function initAccountAndLanguage() {
   document.getElementById("langEn").classList.toggle("active", currentLang === "en");
   document.getElementById("langFi").classList.toggle("active", currentLang === "fi");
   applyLanguage();
-
-  currentAccount = null; // Supabase session, not localStorage, is the source of truth.
+  currentAccount = null;
   renderAccountUI();
 }
 

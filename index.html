@@ -1496,8 +1496,8 @@ async function downloadStats() {
 
     valid.sort((a, b) => a.date.localeCompare(b.date) || nameOf(a).localeCompare(nameOf(b)));
 
-    const byDay = [[T("statsColDate"), T("statsColDay"), T("statsColPerson"), T("statsColNumbers"), T("statsColCount"), T("statsColRoutes")]];
-    valid.forEach(d => byDay.push([d.date, weekday(d.date), nameOf(d), d.day_type === "odd" ? T("oddNumbers") : T("evenNumbers"), d.routes.length, d.routes.map(routeText).join(", ")]));
+const byDay = [[T("statsColDate"), T("statsColPerson"), T("statsColCount"), T("statsColRoutes")]];
+    valid.forEach(d => byDay.push([d.date, nameOf(d), d.routes.length, d.routes.map(routeText).join(", ")]));
 
     const dates = Array.from(new Set(valid.map(d => d.date))).sort();
     const people = Array.from(new Set(valid.map(personKey))).sort((a, b) => {

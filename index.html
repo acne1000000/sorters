@@ -1518,7 +1518,7 @@ const byDay = [[T("statsColDate"), T("statsColPerson"), T("statsColCount"), T("s
     });
 
     const bytes = buildXlsx([
-      { name: T("statsSheetByDay"), rows: byDay, widths: [12, 14, 24, 16, 14, 70], wrap: true },
+      { name: T("statsSheetByDay"), rows: byDay, widths: [12, 24, 14, 70], wrap: true },
       { name: T("statsSheetPerPerson"), rows: matrix, widths: [24].concat(dates.map(() => 30), [12, 16]), freezeCols: 1, wrap: true }
     ]);
     const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

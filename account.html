@@ -448,8 +448,32 @@ async function saveProfile() {
 }
 
 async function signOut() {
-  const { error } = await sb.auth.signOut();
-  if (error) { setStatus("profileStatus", error.message, "err"); return; }
+  setStatus("profileStatus", "Signing out…", "");
+
+  // Try the normal sign-out first; a stale token can make the API error out
+  // ("Auth session missing!"), which is harmless — we still wipe local state.
+  try {
+    await sb.auth.signOut({ scope: "local" });
+  } catch (e) {
+    console.warn("Sign out API reported an error (ignored):", e && e.message);
+  }
+
+  // Belt-and-braces: clear anything Supabase cached locally, in case the
+  // API call couldn't reach the server or the token was already gone.
+  try {
+    const projectRef = new URL(SUPABASE_URL).hostname.split(".")[0];
+    localStorage.removeItem("sb-" + projectRef + "-auth-token");
+    localStorage.removeItem("sb-" + projectRef + "-auth-token-code-verifier");
+  } catch (e) { /* ignore */ }
+
+  // Clear in-memory state so nothing in the UI can show a stale "signed in".
+  user = null;
+  avatarUrl = null;
+  pendingPhoto = null;
+  recoveryPending = false;
+
+  // Hard-navigate home; index.html will re-evaluate the (now empty) session.
+  window.location.href = "index.html";
 }
 
 function showRecoveryView() {
